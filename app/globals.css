@@ -1,26 +1,36 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Dopasowujemy tło bazy do naszej palety slate-100 z page.tsx */
+  --background: #f1f5f9; 
+  --foreground: #0f172a; 
 }
 
+/* Konfiguracja motywu w Tailwind v4 */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* Globalny reset i style bazowe */
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* NAPRAWA: Teraz body realnie dziedziczy zoptymalizowaną czcionkę Geist */
+  font-family: var(--font-geist-sans), sans-serif;
+  
+  /* Optymalizacja renderowania tekstu na ekranach telefonów */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  /* Zapobiega brzydkiemu przesuwaniu strony na boki na smartfonach */
+  overflow-x: hidden; 
+}
+
+/* Usprawnienie działania przewijania na urządzeniach mobilnych */
+html {
+  scroll-behavior: smooth;
+  height: 100%;
 }
