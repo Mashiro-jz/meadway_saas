@@ -34,9 +34,12 @@ export interface FinanseState {
   kilometry: string;
   nocleg: string;
   kosztaInne: string;
+  kosztaInneOpis: string;
 }
 
 export interface StatusyState {
+  zdjcStan: boolean;
+  zdjcDo: boolean;
   pracaPoza: boolean;
   otwartoZgodnie: boolean;
   zdjecieStan: boolean;
