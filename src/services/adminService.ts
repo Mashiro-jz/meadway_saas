@@ -139,4 +139,228 @@ export const adminService = {
 
     if (error) throw error;
   },
+
+  // Pobranie wszystkich punktów wraz z nazwą rejonu
+  async getAllPunktyHandlu() {
+    const { data, error } = await supabase
+      .from("punkty_handlu")
+      .select("*, rejony!punkty_handlu_id_rejonu_fkey(nazwa)")
+      .order("nazwa", { ascending: true });
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Zapisanie lub edycja punktu handlu
+  async savePunktHandlu(punktData: any, idLokalizacji?: number) {
+    if (idLokalizacji) {
+      // Edycja - dodajemy select().single(), żeby wymusić błąd przy cichej blokadzie RLS
+      const { data, error } = await supabase
+        .from("punkty_handlu")
+        .update(punktData)
+        .eq("id_lokalizacji", idLokalizacji)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data)
+        throw new Error(
+          "Baza odrzuciła zapis (prawdopodobnie brak polisy RLS UPDATE).",
+        );
+    } else {
+      // Tworzenie nowego
+      const { data, error } = await supabase
+        .from("punkty_handlu")
+        .insert([punktData])
+        .select()
+        .single();
+
+      if (error) throw error;
+    }
+  },
+
+  // Usunięcie punktu handlu
+  async deletePunktHandlu(idLokalizacji: number) {
+    const { error } = await supabase
+      .from("punkty_handlu")
+      .delete()
+      .eq("id_lokalizacji", idLokalizacji);
+    if (error) throw error;
+  },
+
+  // ==========================================
+  // ZARZĄDZANIE PRACOWNIKAMI (CRUD)
+  // ==========================================
+
+  // Pobranie wszystkich użytkowników dla panelu Admina
+  async getWszyscyPracownicy() {
+    const { data, error } = await supabase
+      .from("uzytkownicy")
+      // ZMIANA: Dokładnie wskazujemy, którą relacją ma połączyć tabele
+      .select("*, rejony!uzytkownicy_id_rejonu_fkey(nazwa)")
+      .order("nazwisko", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Zapis pracownika (z rzucaniem błędu przy blokadzie RLS)
+  async savePracownik(pracownikData: any, idUzytkownika?: number) {
+    if (idUzytkownika) {
+      // Edycja
+      const { data, error } = await supabase
+        .from("uzytkownicy")
+        .update(pracownikData)
+        .eq("id_uzytkownika", idUzytkownika)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data)
+        throw new Error("Brak uprawnień do edycji pracownika (RLS blokuje).");
+    } else {
+      // Dodawanie nowego
+      const { data, error } = await supabase
+        .from("uzytkownicy")
+        .insert([pracownikData])
+        .select()
+        .single();
+
+      if (error) throw error;
+    }
+  },
+
+  // Usuwanie pracownika
+  async deletePracownik(idUzytkownika: number) {
+    const { error } = await supabase
+      .from("uzytkownicy")
+      .delete()
+      .eq("id_uzytkownika", idUzytkownika);
+
+    if (error) throw error;
+  },
+
+  // ==========================================
+  // ZARZĄDZANIE REJONAMI (CRUD)
+  // ==========================================
+
+  // Pobranie listy rejonów wraz z imieniem i nazwiskiem koordynatora
+  async getRejonyZKoordynatorami() {
+    const { data, error } = await supabase
+      .from("rejony")
+      .select("*, uzytkownicy!rejony_id_koordynatora_fkey(imie, nazwisko)")
+      .order("nazwa", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Pobranie listy użytkowników, którzy mogą zostać przypisani jako szefowie rejonu
+  async getDostepniKoordynatorzy() {
+    const { data, error } = await supabase
+      .from("uzytkownicy")
+      .select("id_uzytkownika, imie, nazwisko, rola")
+      .in("rola", ["koordynator", "admin"])
+      .order("nazwisko", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Zapis rejonu (wymusza odpowiedź przez .single() aby złapać blokady RLS)
+  async saveRejon(rejonData: any, idRejonu?: number) {
+    if (idRejonu) {
+      // Edycja
+      const { data, error } = await supabase
+        .from("rejony")
+        .update(rejonData)
+        .eq("id_rejonu", idRejonu)
+        .select()
+        .single();
+
+      if (error) throw error;
+      if (!data)
+        throw new Error("Brak uprawnień do edycji rejonu (RLS blokuje).");
+    } else {
+      // Nowy rejon
+      const { data, error } = await supabase
+        .from("rejony")
+        .insert([rejonData])
+        .select()
+        .single();
+
+      if (error) throw error;
+    }
+  },
+
+  // Usuwanie rejonu
+  async deleteRejon(idRejonu: number) {
+    const { error } = await supabase
+      .from("rejony")
+      .delete()
+      .eq("id_rejonu", idRejonu);
+
+    if (error) throw error;
+  },
+  // ==========================================
+  // PROFIL PRACOWNIKA (Szczegóły, Checklisty, Grafik)
+  // ==========================================
+
+  // 1. Pobranie szczegółów użytkownika wraz z rejonem i koordynatorem
+  async getSzczegolyPracownika(idUzytkownika: number) {
+    const { data, error } = await supabase
+      .from("uzytkownicy")
+      .select(
+        `
+        *,
+        rejony!uzytkownicy_id_rejonu_fkey(
+          nazwa,
+          uzytkownicy!rejony_id_koordynatora_fkey(imie, nazwisko)
+        )
+      `,
+      )
+      .eq("id_uzytkownika", idUzytkownika)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // 2. Pobranie wszystkich checklist wykonanych przez tego pracownika
+  async getChecklistyPracownika(idUzytkownika: number) {
+    const { data, error } = await supabase
+      .from("check_lista")
+      .select(
+        `
+        *,
+        punkty_handlu (
+          nazwa,
+          rejony (nazwa)
+        ),
+        check_lista_towar (*),
+        check_lista_finanse (*)
+      `,
+      )
+      .eq("id_uzytkownika", idUzytkownika)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // 3. Pobranie grafiku pracownika (np. od dziś w przód, lub ogólnie)
+  async getGrafikPracownika(idUzytkownika: number) {
+    const { data, error } = await supabase
+      .from("grafik")
+      .select(
+        `
+        *,
+        punkty_handlu(*)
+      `,
+      )
+      .eq("id_uzytkownika", idUzytkownika)
+      .order("data", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  },
 };

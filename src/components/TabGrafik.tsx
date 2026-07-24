@@ -147,7 +147,7 @@ export default function TabGrafik(props: any) {
         
         <div className="col-span-2 flex items-center gap-2 mt-2 pt-3 border-t border-slate-100 w-full justify-center text-rose-600">
           <span className="w-4 h-4 bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-sm">!</span> 
-          Wymuszone przypisanie przez koordynatora
+          Wymuszone przypisanie
         </div>
       </div>
 
