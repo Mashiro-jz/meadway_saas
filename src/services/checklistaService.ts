@@ -298,4 +298,30 @@ export const checklistaService = {
     if (error) throw error;
     return data;
   },
+  // Pobieranie informacji, czy pracownik ma na dzisiaj zaplanowany wyjazd
+  async getDzisiejszyGrafik(idUzytkownika: number) {
+    // Generujemy dzisiejszą datę w formacie YYYY-MM-DD
+    const dzis = new Date().toLocaleDateString('en-CA'); 
+
+    const { data, error } = await supabase
+      .from("grafik")
+      .select("*, punkty_handlu(*)")
+      .eq("id_uzytkownika", idUzytkownika)
+      .eq("data", dzis)
+      .maybeSingle(); // maybeSingle nie wyrzuci błędu, jeśli nie ma wpisu (ma wolne)
+
+    if (error) throw error;
+    return data;
+  },
+  async getSzczegolyChecklisty(idChecklisty: number) {
+    const { data, error } = await supabase
+      .from("check_lista")
+      .select("*, check_lista_towar(*), check_lista_finanse(*), check_lista_status(*)")
+      .eq("id_checklisty", idChecklisty)
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
 };
+

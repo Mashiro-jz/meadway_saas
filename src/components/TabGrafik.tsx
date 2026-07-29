@@ -63,7 +63,7 @@ export default function TabGrafik(props: any) {
   const przypisaneWyjazdyMiesiaca = dniGrafiku.filter((d: any) => d.punkty_handlu !== null);
 
   return (
-    <div className="max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-6 mb-8 animate-fadeIn">
+    <div className="w-[calc(100%-2rem)] md:w-full max-w-xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 p-4 sm:p-6 mb-8 animate-fadeIn my-4 md:my-8">
       <div className="text-center mb-6">
         <h1 className="text-xl sm:text-2xl font-black text-slate-800 tracking-tight">Twój miesięczny grafik</h1>
         <div className="flex items-center justify-center gap-6 mt-4">
@@ -91,7 +91,7 @@ export default function TabGrafik(props: any) {
       </div>
 
       <div className="w-full overflow-x-auto">
-        <div className="min-w-[340px] space-y-2">
+        <div className="min-w-[340px] space-y-2 pr-1 scrollbar-thin">
           <div className="flex items-center text-center text-[11px] font-black text-slate-400 uppercase tracking-wider border-b pb-2 font-mono">
             <div className="w-12 shrink-0 text-left pl-1">Nr. tyg.</div>
             {['Pon.', 'Wt.', 'Śr.', 'Czw.', 'Pt.', 'Sob.', 'Ndz.'].map(d => (<div key={d} className="flex-1">{d}</div>))}
