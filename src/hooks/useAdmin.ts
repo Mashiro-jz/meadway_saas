@@ -28,6 +28,10 @@ export function useAdmin(userProfil: any) {
   const [doObgadania, setDoObgadania] = useState<any[]>([]);
   const [resztaPracownikow, setResztaPracownikow] = useState<any[]>([]);
   const [przypisaniPracownicy, setPrzypisaniPracownicy] = useState<any[]>([]);
+  
+  // NOWY STAN: Lista osób przypisanych w tym samym czasie gdzie indziej
+  const [zajeciPracownicy, setZajeciPracownicy] = useState<any[]>([]);
+  
   const [szukanaFraza, setSzukanaFraza] = useState('');
   
   const getNastepnyWeekend = (typ: 'sobota' | 'niedziela') => {
@@ -74,7 +78,6 @@ export function useAdmin(userProfil: any) {
     filtrRejonu === 'ALL' ? true : j.id_rejonu === parseInt(filtrRejonu)
   );
 
-  // Kiedy admin przełącza rejon, musimy zaktualizować domyślnie wybrany jarmark
   useEffect(() => {
     if (widoczneJarmarki.length > 0) {
       const czyJest = widoczneJarmarki.find(j => j.id_lokalizacji === wybranyJarmark?.id_lokalizacji);
@@ -105,11 +108,9 @@ export function useAdmin(userProfil: any) {
         getSafeDateStr(koniecQueryDt)
       );
 
-      // Skrupulatne filtrowanie pracowników
       const przefiltrowaniLudzie = ludzie.filter((p: any) => {
         const czyPasujeNazwa = `${p.imie} ${p.nazwisko}`.toLowerCase().includes(szukanaFraza.toLowerCase());
         
-        // Jeśli admin nałożył filtr, nie pokazujemy ludzi z całej firmy, tylko z tego rejonu (oraz skoczków: 2)
         if (userProfil.rola === 'admin' && filtrRejonu !== 'ALL') {
           const czyPasujeRejon = p.id_rejonu === parseInt(filtrRejonu) || p.id_rejonu === 2;
           return czyPasujeNazwa && czyPasujeRejon;
@@ -121,11 +122,13 @@ export function useAdmin(userProfil: any) {
       const grupaDoObgadania: any[] = [];
       const grupaReszta: any[] = [];
       const listaPrzypisanych: any[] = [];
+      const grupaZajeci: any[] = []; // NOWA GRUPA
 
       przefiltrowaniLudzie.forEach((pracownik: any) => {
         const idPrac = Number(pracownik.id_uzytkownika);
         const wpisyPracownika = wpisyGrafiku.filter((w: any) => Number(w.id_uzytkownika) === idPrac);
 
+        // 1. Sprawdzamy czy jest z nami na aktualnie wybranym jarmarku
         const czyPrzypisany = wpisyPracownika.some((w: any) => 
             Number(w.id_lokalizacji) === Number(wybranyJarmark.id_lokalizacji) && 
             zakresDatHandlu.includes(znormalizujDate(w.data))
@@ -133,6 +136,23 @@ export function useAdmin(userProfil: any) {
         if (czyPrzypisany) { listaPrzypisanych.push(pracownik); return; }
 
         const wpisyWDniachHandlu = wpisyPracownika.filter((w: any) => zakresDatHandlu.includes(znormalizujDate(w.data)));
+
+        // 2. NOWOŚĆ: Sprawdzamy, czy pracownik dostał już przydział, ale GDZIE INDZIEJ (id_lokalizacji != null)
+        const wpisZajetyGdzieIndziej = wpisyWDniachHandlu.find((w: any) => 
+            w.id_lokalizacji && Number(w.id_lokalizacji) !== Number(wybranyJarmark.id_lokalizacji)
+        );
+
+        if (wpisZajetyGdzieIndziej) {
+            // Dodajemy nazwę lokalizacji, do której został wysłany
+            const pracownikZZajetymDniem = {
+                ...pracownik,
+                gdzieWyslany: wpisZajetyGdzieIndziej.punkty_handlu?.nazwa || 'Inny Jarmark'
+            };
+            grupaZajeci.push(pracownikZZajetymDniem);
+            return; // Zamykamy sprawdzanie tej osoby, by nie trafiła do Pewniaków
+        }
+
+        // 3. Skoro nie jest nigdzie wysłany, sprawdzamy dostępność
         const iloscDniDostepnych = wpisyWDniachHandlu.filter((w: any) => w.dostepnosc?.trim().toLowerCase() === 'dostepny').length;
 
         if (iloscDniDostepnych === zakresDatHandlu.length && zakresDatHandlu.length > 0) { grupaPewniacy.push(pracownik); return; }
@@ -142,22 +162,27 @@ export function useAdmin(userProfil: any) {
         );
         if ((iloscDniDostepnych > 0 && iloscDniDostepnych < zakresDatHandlu.length) || czyDostepnyWOkolicy) { grupaDoObgadania.push(pracownik); return; }
 
+        // 4. Jeśli nie pasuje nigdzie wyżej, ląduje w reszcie
         grupaReszta.push(pracownik);
       });
 
-      setPewniacy(grupaPewniacy); setDoObgadania(grupaDoObgadania); setResztaPracownikow(grupaReszta); setPrzypisaniPracownicy(listaPrzypisanych);
+      setPewniacy(grupaPewniacy); 
+      setDoObgadania(grupaDoObgadania); 
+      setResztaPracownikow(grupaReszta); 
+      setPrzypisaniPracownicy(listaPrzypisanych);
+      setZajeciPracownicy(grupaZajeci);
+      
     } catch (err) { console.error(err); }
   };
 
   useEffect(() => { zaladujDaneMenedzerskie(); }, [userProfil]);
   useEffect(() => { analizujDostepnoscIPrzeliczGrupy(); }, [wybranyJarmark, dataOd, dataDo, szukanaFraza, filtrRejonu]);
 
-const przypiszPracownika = async (idUzytkownika: number, wymuszone: boolean = false) => {
+  const przypiszPracownika = async (idUzytkownika: number, wymuszone: boolean = false) => {
     if (!wybranyJarmark) return;
     const zakresDatHandlu = pobierzTabliceDatZakresu(dataOd, dataDo);
     try {
       for (const dataStr of zakresDatHandlu) {
-        // Dodano przekazanie flagi "wymuszone"
         await adminService.przypiszPracownikaDoJarmarku(idUzytkownika, dataStr, wybranyJarmark.id_lokalizacji, wymuszone);
       }
       await analizujDostepnoscIPrzeliczGrupy();
@@ -174,7 +199,8 @@ const przypiszPracownika = async (idUzytkownika: number, wymuszone: boolean = fa
 
   return {
     widoczneJarmarki, wybranyJarmark, setWybranyJarmark, loadingAdmin,
-    pewniacy, doObgadania, resztaPracownikow, przypisaniPracownicy, dataOd, setDataOd, dataDo, setDataDo,
+    pewniacy, doObgadania, resztaPracownikow, przypisaniPracownicy, zajeciPracownicy, // WYEKSPORTOWANO STAN!
+    dataOd, setDataOd, dataDo, setDataDo,
     szukanaFraza, setSzukanaFraza, przypiszPracownika, usunPrzypisaniePracownika,
     userProfil, listaRejonow, filtrRejonu, setFiltrRejonu
   };

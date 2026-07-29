@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useProfilPracownika } from '../../hooks/useProfilPracownika';
 import PunktHandluPopup from '../PunktHandluPopup'; 
+import { adminService } from '../../services/adminService'; // <-- DODANO IMPORT
 
 interface ProfilPracownikaProps {
   idUzytkownika: number;
@@ -14,6 +15,11 @@ export default function ProfilPracownika({ idUzytkownika, onBack }: ProfilPracow
   
   const [rozszerzonaLista, setRozszerzonaLista] = useState<number | null>(null);
   const [trescUwagi, setTrescUwagi] = useState<string | null>(null);
+
+  // --- STANY DO ZDJĘĆ ---
+  const [powiekszoneZdjecie, setPowiekszoneZdjecie] = useState<string | null>(null);
+  const [zdjeciaUrl, setZdjeciaUrl] = useState<{ kasa: string|null, sumup: string|null, stanowisko: string|null } | null>(null);
+  const [loadingZdjecia, setLoadingZdjecia] = useState(false);
 
   // --- STANY I LOGIKA DLA MINI-KALENDARZA ---
   const [wybranyMiesiac, setWybranyMiesiac] = useState(new Date().getMonth() + 1);
@@ -77,8 +83,25 @@ export default function ProfilPracownika({ idUzytkownika, onBack }: ProfilPracow
   if (loading) return <div className="text-center p-12 text-slate-500 font-bold animate-pulse">Ładowanie profilu pracownika...</div>;
   if (error || !pracownik) return <div className="text-center p-12 text-rose-500 font-bold">{error || 'Nie znaleziono pracownika.'}</div>;
 
-  const toggleLista = (id: number) => {
-    setRozszerzonaLista(prev => prev === id ? null : id);
+  // ZMIANA: Asynchroniczna funkcja pobierająca linki do zdjęć w momencie rozwijania checklisty
+  const toggleLista = async (id: number) => {
+    if (rozszerzonaLista === id) {
+      setRozszerzonaLista(null);
+      setZdjeciaUrl(null);
+    } else {
+      setRozszerzonaLista(id);
+      setZdjeciaUrl(null);
+      setLoadingZdjecia(true);
+      
+      try {
+        const urls = await adminService.getZdjeciaDlaChecklisty(id);
+        setZdjeciaUrl(urls);
+      } catch (err) {
+        console.error("Błąd ładowania zdjęć", err);
+      } finally {
+        setLoadingZdjecia(false);
+      }
+    }
   };
 
   return (
@@ -187,8 +210,8 @@ export default function ProfilPracownika({ idUzytkownika, onBack }: ProfilPracow
                                     <div className="flex justify-between"><span className="text-slate-500">Dostawa:</span> <strong className="font-mono text-indigo-600">+{towar?.dostawa || 0}</strong></div>
                                     <div className="flex justify-between pt-2 mt-2 border-t border-slate-100"><span className="text-slate-500">Stan wieczorny (Butelki):</span> <strong className="font-mono">{towar?.wieczor_butelki_pelne || 0}</strong></div>
                                     <div className="flex justify-between"><span className="text-slate-500">Stan wieczorny (Słoiki):</span> <strong className="font-mono">{towar?.wieczor_sloiki_pelne || 0}</strong></div>
-                                    <div className="flex justify-between pt-2"><span className="text-slate-500">Butelki Puste / Protocudak:</span> <strong className="font-mono">{towar?.wieczor_butelki_puste || 0} / {towar?.wieczor_butelki_protocudak || 0}</strong></div>
-                                    <div className="flex justify-between"><span className="text-slate-500">Próbki / Prezenty / Stłuczki:</span> <strong className="font-mono">{towar?.ilosc_probki || 0} / {towar?.ilosc_prezenty_stluczki || 0}</strong></div>
+                                    <div className="flex justify-between pt-2"><span className="text-slate-500">Butelki Puste / Protocudak:</span> <strong className="font-mono text-rose-500">{towar?.wieczor_butelki_puste || 0} / {towar?.wieczor_butelki_protocudak || 0}</strong></div>
+                                    <div className="flex justify-between"><span className="text-slate-500">Próbki / Prezenty / Stłuczki:</span> <strong className="font-mono text-rose-500">{towar?.ilosc_probki || 0} / {towar?.ilosc_prezenty_stluczki || 0}</strong></div>
                                   </div>
                                 </div>
                                 {/* KOLUMNA 2: FINANSE */}
@@ -225,6 +248,43 @@ export default function ProfilPracownika({ idUzytkownika, onBack }: ProfilPracow
                                     )}
                                   </div>
                                 </div>
+
+                                {/* SEKCJA ZE ZDJĘCIAMI (Rozciągnięta na 3 kolumny u dołu) */}
+                                <div className="md:col-span-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 mt-2">
+                                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">📸 Dowody i Załączniki</h3>
+                                  
+                                  {loadingZdjecia ? (
+                                    <div className="flex gap-2 items-center text-xs font-bold text-slate-400 animate-pulse">
+                                      <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin"></span> 
+                                      Szukanie plików w bazie...
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-3">
+                                      <button
+                                        disabled={!zdjeciaUrl?.stanowisko}
+                                        onClick={(e) => { e.stopPropagation(); setPowiekszoneZdjecie(zdjeciaUrl!.stanowisko); }}
+                                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 ${zdjeciaUrl?.stanowisko ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 cursor-pointer' : 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed opacity-70'}`}
+                                      >
+                                        🏕️ Stoisko
+                                      </button>
+                                      <button
+                                        disabled={!zdjeciaUrl?.sumup}
+                                        onClick={(e) => { e.stopPropagation(); setPowiekszoneZdjecie(zdjeciaUrl!.sumup); }}
+                                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 ${zdjeciaUrl?.sumup ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 cursor-pointer' : 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed opacity-70'}`}
+                                      >
+                                        💳 SumUp
+                                      </button>
+                                      <button
+                                        disabled={!zdjeciaUrl?.kasa}
+                                        onClick={(e) => { e.stopPropagation(); setPowiekszoneZdjecie(zdjeciaUrl!.kasa); }}
+                                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 ${zdjeciaUrl?.kasa ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 cursor-pointer' : 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed opacity-70'}`}
+                                      >
+                                        🧾 Raport Kasowy
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+
                               </div>
                             </td>
                           </tr>
@@ -245,7 +305,6 @@ export default function ProfilPracownika({ idUzytkownika, onBack }: ProfilPracow
           </h2>
 
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
-            {/* Wybór miesiąca */}
             <div className="flex items-center justify-between mb-4 bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
               <button onClick={() => setWybranyMiesiac(m => m === 1 ? (setWybranyRok(y => y - 1), 12) : m - 1)} className="w-6 h-6 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-bold transition cursor-pointer">&lt;</button>
               <span className="text-xs font-black text-slate-800 uppercase tracking-wide">
@@ -254,7 +313,6 @@ export default function ProfilPracownika({ idUzytkownika, onBack }: ProfilPracow
               <button onClick={() => setWybranyMiesiac(m => m === 12 ? (setWybranyRok(y => y + 1), 1) : m + 1)} className="w-6 h-6 flex items-center justify-center bg-slate-100 hover:bg-slate-200 rounded text-slate-700 font-bold transition cursor-pointer">&gt;</button>
             </div>
 
-            {/* Skompresowana Siatka Kalendarza */}
             <div className="w-full">
               <div className="flex items-center text-center text-[9px] font-black text-slate-400 uppercase tracking-wider border-b pb-1.5 mb-1.5">
                 <div className="w-6 shrink-0"></div>
@@ -268,11 +326,11 @@ export default function ProfilPracownika({ idUzytkownika, onBack }: ProfilPracow
                     if (d === null) return <div key={`empty-${dIdx}`} className="flex-1 h-7 m-0.5" />;
                     const maPrzypisanyHandel = d.punkty_handlu !== null;
                     
-                    // Kolory dostępności w mini-widoku
-                    let bgColor = 'bg-slate-200 text-slate-600'; // nieznana
+                    let bgColor = 'bg-slate-200 text-slate-600'; 
                     if (d.dostepnosc === 'dostepny') bgColor = 'bg-emerald-500 text-white';
                     if (d.dostepnosc === 'nd') bgColor = 'bg-rose-500 text-white';
                     if (d.dostepnosc === 'nz') bgColor = 'bg-orange-500 text-white';
+                    
                     return (
                       <div
                         key={d.data}
@@ -303,6 +361,27 @@ export default function ProfilPracownika({ idUzytkownika, onBack }: ProfilPracow
         </div>
 
       </div>
+
+      {/* POP-UP Z POWIĘKSZONYM ZDJĘCIEM */}
+      {powiekszoneZdjecie && (
+        <div onClick={() => setPowiekszoneZdjecie(null)} className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm cursor-pointer animate-fadeIn">
+          <div className="relative max-w-5xl w-full flex items-center justify-center">
+            {/* Przycisk zamknięcia */}
+            <button 
+              onClick={() => setPowiekszoneZdjecie(null)} 
+              className="absolute -top-12 right-0 md:-right-8 text-white bg-slate-800 hover:bg-slate-700 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl border border-slate-600 transition shadow-xl z-10 cursor-pointer"
+            >✕</button>
+            
+            {/* Zdjęcie (zablokowane kliknięcie, aby nie zamykało modala po trafieniu w obrazek) */}
+            <img 
+              src={powiekszoneZdjecie} 
+              alt="Dowód z Jarmarku" 
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl animate-scaleUp border border-slate-700" 
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
+        </div>
+      )}
 
       {/* MODAL (POP-UP) Z TREŚCIĄ UWAGI */}
       {trescUwagi && (

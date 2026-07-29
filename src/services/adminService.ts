@@ -363,4 +363,34 @@ export const adminService = {
     if (error) throw error;
     return data || [];
   },
+  // 4. Pobranie linków do zdjęć z konkretnej checklisty
+  async getZdjeciaDlaChecklisty(idChecklisty: number) {
+    const { data, error } = await supabase.storage
+      .from("raporty") // <-- Upewnij się, że to nazwa zgodna z Twoim SS (małe litery)
+      .list("", {
+        search: `${idChecklisty}_`, // Szuka plików typu "33_kasa.jpg", "33_sumup.png"
+      });
+
+    if (error) {
+      console.error("Błąd pobierania zdjęć z Supabase:", error);
+      return { kasa: null, sumup: null, stanowisko: null };
+    }
+
+    const urls = { kasa: null as string | null, sumup: null as string | null, stanowisko: null as string | null };
+
+    if (data && data.length > 0) {
+      for (const plik of data) {
+        // Generujemy z nazwy pliku publiczny link
+        const publicUrl = supabase.storage.from("raporty").getPublicUrl(plik.name).data.publicUrl;
+        const nazwa = plik.name.toLowerCase();
+        
+        // Rozdzielamy URL-e do odpowiednich szufladek ignorując wielkość liter i rozszerzenia
+        if (nazwa.includes("_kasa")) urls.kasa = publicUrl;
+        else if (nazwa.includes("_sumup")) urls.sumup = publicUrl;
+        else if (nazwa.includes("_stanowisko")) urls.stanowisko = publicUrl;
+      }
+    }
+
+    return urls;
+  },
 };

@@ -1,10 +1,13 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation'; // <-- Dodany import z Next.js
 import { usePracownicy } from '../../hooks/usePracownicy';
-import ProfilPracownika from './ProfilPracownika';
+// ProfilPracownika nie jest tu już potrzebny, bo zajmuje się nim strona w folderze [id]
 
 export default function TabPracownicy() {
+  const router = useRouter(); // <-- Inicjalizacja routera
+
   const {
     pracownicy, rejony, loading,
     szukanaFraza, setSzukanaFraza,
@@ -25,12 +28,6 @@ export default function TabPracownicy() {
   const [formTelefon, setFormTelefon] = useState('');
   const [formRola, setFormRola] = useState('pracownik');
   const [formRejon, setFormRejon] = useState('');
-  const [wybranyPracownikId, setWybranyPracownikId] = useState<number | null>(null);
-
-  // Jeśli jest wybrane ID pracownika, POKAŻ PROFIL ZAMIAST TABELI
-  if (wybranyPracownikId !== null) {
-    return <ProfilPracownika idUzytkownika={wybranyPracownikId} onBack={() => setWybranyPracownikId(null)} />;
-  }
 
   // Synchronizacja danych przy otwieraniu modala
   const obsluzOtwarcieModala = (pracownik: any = null) => {
@@ -183,7 +180,8 @@ export default function TabPracownicy() {
                     <div className="flex items-center gap-2">
                       <p className="font-extrabold text-slate-800">{p.imie} {p.nazwisko}</p>
                       <button
-                        onClick={() => setWybranyPracownikId(p.id_uzytkownika)}
+                        // ZMIANA TUTAJ: Zamiast zmieniać stan, przekierowujemy na nowy adres URL!
+                        onClick={() => router.push(`/admin/pracownicy/${p.id_uzytkownika}`)}
                         className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-400 hover:bg-indigo-100 hover:text-indigo-600 transition-all transform hover:translate-x-1 cursor-pointer"
                         title="Zobacz profil pracownika"
                       >
@@ -280,6 +278,7 @@ export default function TabPracownicy() {
                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-wider">Przypisany Rejon</label>
                     <select value={formRejon} onChange={(e) => setFormRejon(e.target.value)} className="w-full text-xs px-3 py-2 border rounded-xl font-bold bg-white border-slate-300 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition cursor-pointer">
                       <option value="">Brak rejonu / Globalny</option>
+                      <option value="null">Wyzeruj rejon</option> {/* Opcja bezpiecznego usunięcia rejonu */}
                       {rejony.map((r: any) => (
                         <option key={r.id_rejonu} value={r.id_rejonu}>{r.nazwa}</option>
                       ))}

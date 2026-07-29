@@ -5,7 +5,7 @@ export default function TabAdmin(props: any) {
     widoczneJarmarki, wybranyJarmark, setWybranyJarmark, dataOd, setDataOd, dataDo, setDataDo,
     szukanaFraza, setSzukanaFraza, przypisaniPracownicy, usunPrzypisaniePracownika,
     pewniacy, doObgadania, resztaPracownikow, przypiszPracownika,
-    userProfil, listaRejonow, filtrRejonu, setFiltrRejonu
+    userProfil, listaRejonow, filtrRejonu, setFiltrRejonu, zajeciPracownicy // NOWY PROP
   } = props;
 
   const [skopiowano, setSkopiowano] = useState(false);
@@ -14,6 +14,15 @@ export default function TabAdmin(props: any) {
     navigator.clipboard.writeText(tekst);
     setSkopiowano(true);
     setTimeout(() => setSkopiowano(false), 2000);
+  };
+
+  // NOWA FUNKCJA: Wyczyść cały jarmark
+  const wyczyscCalyJarmark = () => {
+    if (!przypisaniPracownicy || przypisaniPracownicy.length === 0) return;
+    const potwierdzenie = window.confirm(`Czy na pewno chcesz usunąć całą aktualną obsadę (${przypisaniPracownicy.length} osób) z tego jarmarku?`);
+    if (potwierdzenie) {
+      przypisaniPracownicy.forEach((p: any) => usunPrzypisaniePracownika(p.id_uzytkownika));
+    }
   };
 
   return (
@@ -70,12 +79,20 @@ export default function TabAdmin(props: any) {
 
         {/* GRUPA 1: ZATRUDNIENI */}
         <div className="space-y-2">
-          <h3 className="text-xs font-black text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">🔒 Aktualna Obsada ({przypisaniPracownicy?.length || 0})</h3>
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="text-xs font-black text-indigo-700 uppercase tracking-wider flex items-center gap-1.5">🔒 Aktualna Obsada ({przypisaniPracownicy?.length || 0})</h3>
+            {przypisaniPracownicy && przypisaniPracownicy.length > 0 && (
+              <button onClick={wyczyscCalyJarmark} className="text-[10px] text-rose-500 bg-rose-50 hover:bg-rose-100 px-2 py-1 rounded font-bold transition flex items-center gap-1 cursor-pointer">
+                🗑️ Wyczyść
+              </button>
+            )}
+          </div>
+          
           {(!przypisaniPracownicy || przypisaniPracownicy.length === 0) ? (<p className="text-xs text-slate-400 italic p-3 bg-slate-50 rounded-xl border border-dashed">Brak przypisanych sprzedawców.</p>) : (
             <div className="grid grid-cols-1 gap-1.5">{przypisaniPracownicy.map((p: any) => (
-              <div key={p.id_uzytkownika} className="flex justify-between items-center bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100 text-xs font-bold text-indigo-900">
+              <div key={p.id_uzytkownika} className="flex justify-between items-center bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100 text-xs font-bold text-indigo-900 shadow-sm">
                 <span className="truncate flex-1">👤 {p.imie} {p.nazwisko} <span className="text-[10px] text-indigo-400 font-medium ml-1">({p.rejony?.nazwa || 'Brak'})</span></span>
-                <button type="button" onClick={() => usunPrzypisaniePracownika(p.id_uzytkownika)} className="text-[10px] bg-white border border-rose-300 text-rose-600 px-2 py-1 rounded-lg hover:bg-rose-50 font-black transition cursor-pointer">Zdejmij</button>
+                <button type="button" onClick={() => usunPrzypisaniePracownika(p.id_uzytkownika)} className="text-[10px] bg-white border border-rose-300 text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 font-black transition cursor-pointer shadow-sm">✕ Odepnij</button>
               </div>
             ))}</div>
           )}
@@ -88,11 +105,28 @@ export default function TabAdmin(props: any) {
             <div className="grid grid-cols-1 gap-1.5">{pewniacy.map((p: any) => (
               <div key={p.id_uzytkownika} className="flex justify-between items-center bg-emerald-50/40 p-2.5 rounded-xl border border-emerald-100 text-xs font-bold text-slate-800">
                 <span className="truncate flex-1">👤 {p.imie} {p.nazwisko} <span className="text-[10px] text-slate-400 font-medium ml-1">({p.rejony?.nazwa || 'Brak'})</span></span>
-                <button type="button" onClick={() => przypiszPracownika(p.id_uzytkownika)} className="text-[10px] bg-emerald-600 text-white px-2.5 py-1 rounded-lg hover:bg-emerald-700 font-black transition shadow-xs cursor-pointer">Wpisz</button>
+                <button type="button" onClick={() => przypiszPracownika(p.id_uzytkownika)} className="text-[10px] bg-emerald-600 text-white px-2.5 py-1.5 rounded-lg hover:bg-emerald-700 font-black transition shadow-xs cursor-pointer">Wpisz ➔</button>
               </div>
             ))}</div>
           )}
         </div>
+
+        {/* NOWA GRUPA: WYSŁANI GDZIE INDZIEJ (Double Booking) */}
+        {zajeciPracownicy && zajeciPracownicy.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-black text-rose-600 uppercase tracking-wider flex items-center gap-1.5">🚗 Wysłani gdzie indziej ({zajeciPracownicy.length})</h3>
+            <div className="grid grid-cols-1 gap-1.5">{zajeciPracownicy.map((p: any) => (
+              <div key={p.id_uzytkownika} className="flex justify-between items-center bg-rose-50/40 p-2.5 rounded-xl border border-rose-100 text-xs font-bold text-slate-800 opacity-75">
+                <div className="flex flex-col truncate flex-1">
+                  <span className="truncate line-through decoration-rose-300">👤 {p.imie} {p.nazwisko}</span>
+                </div>
+                <span className="text-[9px] font-black uppercase text-rose-600 bg-rose-100 px-2 py-1 rounded truncate max-w-[120px]">
+                  📍 {p.gdzieWyslany || 'Zajęty'}
+                </span>
+              </div>
+            ))}</div>
+          </div>
+        )}
 
         {/* GRUPA 3: DO OBGADANIA */}
         <div className="space-y-2">
@@ -106,7 +140,7 @@ export default function TabAdmin(props: any) {
                 </div>
                 <div className="flex gap-1 shrink-0">
                   {p.numer_telefonu && (<button type="button" onClick={() => skopiujDoSchowka(p.numer_telefonu)} className="text-[10px] bg-white border px-2 py-1 rounded-lg hover:bg-slate-100 font-bold text-slate-600 cursor-pointer">{skopiowano ? '✓' : '📋'}</button>)}
-                  <button type="button" onClick={() => przypiszPracownika(p.id_uzytkownika)} className="text-[10px] bg-amber-500 text-white px-2.5 py-1 rounded-lg hover:bg-amber-600 font-black transition shadow-xs cursor-pointer">Wpisz</button>
+                  <button type="button" onClick={() => przypiszPracownika(p.id_uzytkownika)} className="text-[10px] bg-amber-500 text-white px-2.5 py-1.5 rounded-lg hover:bg-amber-600 font-black transition shadow-xs cursor-pointer">Wpisz</button>
                 </div>
               </div>
             ))}</div>
@@ -122,8 +156,7 @@ export default function TabAdmin(props: any) {
                 <div className="flex flex-col truncate flex-1">
                   <span className="truncate">👤 {p.imie} {p.nazwisko} <span className="text-[10px] text-slate-400 font-medium ml-1">({p.rejony?.nazwa || 'Brak'})</span></span>
                 </div>
-                {/* ZMIANA: Dodano 'true' jako drugi argument funkcji */}
-                <button type="button" onClick={() => przypiszPracownika(p.id_uzytkownika, true)} className="text-[10px] bg-slate-800 text-white px-2.5 py-1 rounded-lg hover:bg-slate-900 font-black transition shadow-xs cursor-pointer shrink-0">Wymuś przypisanie</button>
+                <button type="button" onClick={() => przypiszPracownika(p.id_uzytkownika, true)} className="text-[10px] bg-slate-800 text-white px-2.5 py-1.5 rounded-lg hover:bg-slate-900 font-black transition shadow-xs cursor-pointer shrink-0">Wymuś przypisanie</button>
               </div>
             ))}</div>
           )}
