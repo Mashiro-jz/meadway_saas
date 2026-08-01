@@ -40,35 +40,38 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
         <div className={`absolute top-0 left-0 bottom-0 w-72 bg-white p-6 flex flex-col justify-between transition-transform duration-300 overflow-y-auto ${czySzufladaOtwarta ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="space-y-6">
             <span className="block font-extrabold text-slate-800 text-lg border-b pb-3">Meadway Sp. z o.o.</span>
-            
+
             <div className="space-y-2">
-              <Link href="/" onClick={() => setCzySzufladaOtwarta(false)} className={`block w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition cursor-pointer ${pathname === '/' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
-                🎪 Bieżący Handel
+              <Link href="/" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-bold transition cursor-pointer ${pathname === '/' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                <span className="text-lg">🎪</span> Bieżący Handel
               </Link>
-              <Link href="/formatki" onClick={() => setCzySzufladaOtwarta(false)} className={`block w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition cursor-pointer ${pathname === '/formatki' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
-                📄 Rozliczenia / Formatki
+              <Link href="/formatki" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-bold transition cursor-pointer ${pathname === '/formatki' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                <span className="text-lg">📄</span> Rozliczenia / Formatki
               </Link>
-              <Link href="/grafik" onClick={() => setCzySzufladaOtwarta(false)} className={`block w-full text-left px-4 py-3 rounded-xl text-sm font-bold transition cursor-pointer ${pathname === '/grafik' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
-                📅 Twój Grafik
+              <Link href="/grafik" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-3 rounded-xl text-sm font-bold transition cursor-pointer ${pathname === '/grafik' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                <span className="text-lg">📅</span> Twój Grafik
               </Link>
             </div>
 
             {/* SEKCJA PANEL ADMINISTRATORA */}
             {userProfil && (userProfil.rola === 'admin' || userProfil.rola === 'koordynator') && (
               <div className="pt-4 border-t border-slate-100 space-y-2">
-                <span className="block text-[11px] font-black text-indigo-600 uppercase tracking-wider px-1">Panel Administratora</span>
-                
-                <Link href="/admin/obsada" onClick={() => setCzySzufladaOtwarta(false)} className={`block w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/obsada' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
-                  📌 Tworzenie miejsca handlu
+                <span className="block text-[11px] font-black text-indigo-600 uppercase tracking-wider px-1 mb-2">Panel Administratora</span>
+
+                <Link href="/admin/dzisiejszy-handel" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/dzisiejszy-handel' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <span className="text-base">📊</span> Dzisiejszy Handel
                 </Link>
-                <Link href="/admin/punkty-handlu" onClick={() => setCzySzufladaOtwarta(false)} className={`block w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/punkty-handlu' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
-                  🎪 Punkty handlu
+                <Link href="/admin/obsada" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/obsada' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <span className="text-base">📌</span> Tworzenie miejsca handlu
                 </Link>
-                <Link href="/admin/rejony" onClick={() => setCzySzufladaOtwarta(false)} className={`block w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/rejony' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
-                  🌍 Rejony
+                <Link href="/admin/punkty-handlu" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/punkty-handlu' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <span className="text-base">🎪</span> Punkty handlu
                 </Link>
-                <Link href="/admin/pracownicy" onClick={() => setCzySzufladaOtwarta(false)} className={`block w-full text-left px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname.includes('/admin/pracownicy') ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
-                  👤 Pracownicy
+                <Link href="/admin/rejony" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/rejony' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <span className="text-base">🌍</span> Rejony
+                </Link>
+                <Link href="/admin/pracownicy" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname.includes('/admin/pracownicy') ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <span className="text-base">👤</span> Pracownicy
                 </Link>
               </div>
             )}
@@ -89,15 +92,14 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
           </span>
         </div>
 
-        <button 
-          onClick={handleLogout} 
+        <button
+          onClick={handleLogout}
           className="bg-rose-50 text-rose-600 font-semibold py-1.5 px-3 rounded-lg text-xs hover:bg-rose-100 transition active:scale-95 border border-rose-100 cursor-pointer"
         >
           Wyloguj
         </button>
       </div>
 
-      {/* TUTAJ DYNAMICZNIE WSTRZYKUJĄ SIĘ NASZE STRONY (TABELE) */}
       <div className="mt-4 animate-fadeIn">
         {children}
       </div>

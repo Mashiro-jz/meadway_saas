@@ -376,14 +376,20 @@ export const adminService = {
       return { kasa: null, sumup: null, stanowisko: null };
     }
 
-    const urls = { kasa: null as string | null, sumup: null as string | null, stanowisko: null as string | null };
+    const urls = {
+      kasa: null as string | null,
+      sumup: null as string | null,
+      stanowisko: null as string | null,
+    };
 
     if (data && data.length > 0) {
       for (const plik of data) {
         // Generujemy z nazwy pliku publiczny link
-        const publicUrl = supabase.storage.from("raporty").getPublicUrl(plik.name).data.publicUrl;
+        const publicUrl = supabase.storage
+          .from("raporty")
+          .getPublicUrl(plik.name).data.publicUrl;
         const nazwa = plik.name.toLowerCase();
-        
+
         // Rozdzielamy URL-e do odpowiednich szufladek ignorując wielkość liter i rozszerzenia
         if (nazwa.includes("_kasa")) urls.kasa = publicUrl;
         else if (nazwa.includes("_sumup")) urls.sumup = publicUrl;
@@ -392,5 +398,66 @@ export const adminService = {
     }
 
     return urls;
+  },
+  // POBIERANIE DZISIEJSZEGO HANDLU DLA ADMINISTRATORA
+  async getDzisiejszyHandelAdmin() {
+    const dzis = new Date().toLocaleDateString("en-CA"); // Zwróci np. "2026-08-01"
+
+    // 1. Pobieramy cały dzisiejszy grafik z twardym WSKAZANIEM klucza obcego dla rejonów!
+    const { data: grafiki, error: errG } = await supabase
+      .from("grafik")
+      .select(
+        `
+        *,
+        uzytkownicy (
+          imie, 
+          nazwisko, 
+          id_rejonu, 
+          rejony:rejony!uzytkownicy_id_rejonu_fkey(nazwa)
+        ),
+        punkty_handlu (nazwa, lokalizacja)
+      `,
+      )
+      .eq("data", dzis)
+      .not("id_lokalizacji", "is", null);
+
+    if (errG) {
+      console.error("Błąd pobierania grafiku (Supabase):", errG);
+      throw errG;
+    }
+
+    // 2. Pobieramy wszystkie dzisiejsze checklisty ze wszystkimi szczegółami
+    const { data: raporty, error: errR } = await supabase
+      .from("check_lista")
+      .select(
+        `
+        *,
+        check_lista_towar (*),
+        check_lista_finanse (*),
+        check_lista_status (*)
+      `,
+      )
+      .eq("data", dzis);
+
+    if (errR) {
+      console.error("Błąd pobierania raportów (Supabase):", errR);
+      throw errR;
+    }
+
+    // 3. Łączymy dane
+    const zlaczoneDane = grafiki.map((g: any) => {
+      const raport = raporty?.find(
+        (r: any) =>
+          r.id_uzytkownika === g.id_uzytkownika &&
+          r.id_lokalizacji === g.id_lokalizacji,
+      );
+
+      return {
+        ...g,
+        raport_z_dnia: raport || null,
+      };
+    });
+
+    return zlaczoneDane;
   },
 };
