@@ -450,7 +450,7 @@ export default function TabHandel(props: any) {
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <input type="text" required placeholder="Trasa logistyczna" value={finanse.trasa} onChange={(e) => setFinanse({ ...finanse, trasa: e.target.value })} className="w-full p-2 border rounded-xl text-xs bg-white border-slate-300 outline-none font-medium focus:border-indigo-500 transition-colors" />
-                          <input type="number" min="0" required placeholder="Kilometry" value={finanse.kilometry} onChange={(e) => setFinanse({ ...finanse, kilometry: e.target.value })} className="w-full p-2 border rounded-xl text-xs bg-white border-slate-300 outline-none font-medium focus:border-indigo-500 transition-colors" />
+                          <input type="number" min="0" step="0.1" required placeholder="Kilometry" value={finanse.kilometry} onChange={(e) => setFinanse({ ...finanse, kilometry: e.target.value })} className="w-full p-2 border rounded-xl text-xs bg-white border-slate-300 outline-none font-medium focus:border-indigo-500 transition-colors" />
                         </div>
                         
                         <div className="grid grid-cols-[1fr_2fr] gap-2">
