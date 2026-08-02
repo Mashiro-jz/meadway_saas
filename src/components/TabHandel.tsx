@@ -14,7 +14,7 @@ export default function TabHandel(props: any) {
   const [dzisiejszyHandel, setDzisiejszyHandel] = useState<any>(null);
   const [loadingDzis, setLoadingDzis] = useState(true);
   const [widokFormularza, setWidokFormularza] = useState(false);
-  
+
   // Bezpiecznik
   const [wlasnaChecklista, setWlasnaChecklista] = useState<any>(null);
   const bezpiecznaChecklista = activeChecklista || wlasnaChecklista;
@@ -25,7 +25,7 @@ export default function TabHandel(props: any) {
 
   useEffect(() => {
     let isMounted = true;
-    
+
     async function start() {
       setLoadingDzis(true);
       try {
@@ -36,13 +36,13 @@ export default function TabHandel(props: any) {
         if (!profil || !isMounted) return;
 
         const dzis = new Date().toLocaleDateString('en-CA');
-        
+
         const dzisiejszeRaporty = await checklistaService.getTodayChecklists(profil.id_uzytkownika, dzis);
         const grafik = await checklistaService.getDzisiejszyGrafik(profil.id_uzytkownika);
-        
+
         if (grafik && grafik.id_lokalizacji && isMounted) {
           setDzisiejszyHandel(grafik);
-          handleStoiskoChange(String(grafik.id_lokalizacji)); 
+          handleStoiskoChange(String(grafik.id_lokalizacji));
 
           const znaleziona = dzisiejszeRaporty.find((c: any) => String(c.id_lokalizacji) === String(grafik.id_lokalizacji));
           if (znaleziona) {
@@ -55,12 +55,12 @@ export default function TabHandel(props: any) {
         if (isMounted) setLoadingDzis(false);
       }
     }
-    
+
     start();
     return () => { isMounted = false; };
   }, []);
 
-  // POBIERANIE ŚWIEŻYCH DANYCH - używa teraz bezpiecznaChecklista!
+  // POBIERANIE ŚWIEŻYCH DANYCH
   useEffect(() => {
     async function fetchFreshData() {
       if (bezpiecznaChecklista?.id_checklisty && czyFormatkaWygenerowana) {
@@ -75,15 +75,14 @@ export default function TabHandel(props: any) {
     fetchFreshData();
   }, [bezpiecznaChecklista?.id_checklisty, czyFormatkaWygenerowana, successMsg]);
 
-  const nazwaStoiska = dzisiejszyHandel?.punkty_handlu?.nazwa 
-    || stoiska?.find((s: any) => String(s.id_lokalizacji) === String(bezpiecznaChecklista?.id_lokalizacji))?.nazwa 
+  const nazwaStoiska = dzisiejszyHandel?.punkty_handlu?.nazwa
+    || stoiska?.find((s: any) => String(s.id_lokalizacji) === String(bezpiecznaChecklista?.id_lokalizacji))?.nazwa
     || 'Stoisko handlowe';
 
-  // LOGIKA WYŚWIETLANIA: Bezpieczne pobieranie najświeższych danych
+  // LOGIKA WYŚWIETLANIA: Bezpieczne pobieranie najświeższych danych z pełnym zakresem z całego dnia
   const getDisplayData = () => {
     const source = daneRaportu || bezpiecznaChecklista || {};
 
-    // ZABEZPIECZENIE: Supabase potrafi zwracać dane jako tablicę [{...}] lub pojedynczy obiekt {...}
     const rawFinanse = source.check_lista_finanse;
     const dbFinanse = Array.isArray(rawFinanse) ? (rawFinanse[0] || {}) : (rawFinanse || {});
 
@@ -91,17 +90,42 @@ export default function TabHandel(props: any) {
     const dbTowar = Array.isArray(rawTowar) ? (rawTowar[0] || {}) : (rawTowar || {});
 
     return {
+      // Finanse
+      sztukKasa: dbFinanse.ilosc_sztuk_wbita_na_kase ?? '0',
       brutto: dbFinanse.kwota_brutto_wbita_na_kase ?? '0',
       sumup: dbFinanse.przychod_sumup ?? '0',
       gotowka: dbFinanse.przychod_gotowka_pln ?? '0',
+      waluty: dbFinanse.przychod_inne_waluty ?? '0',
       koszty: dbFinanse.koszta_inne ?? '0',
-      butelki: dbTowar.butelki_sprzedane ?? '0',
-      sloiki: dbTowar.sloiki_sprzedane ?? '0',
+      kosztyOpis: dbFinanse.koszta_inne_opis ?? '',
+      
+      // Logistyka i Czas
+      km: dbFinanse.kilometry ?? '0',
+      trasa: dbFinanse.trasa ?? '-',
+      nocleg: dbFinanse.nocleg ?? '0',
       godzHandlowe: source.ilosc_godzin_handlowych ?? '0',
       godzInne: source.ilosc_godzin_niehandlowych ?? '0',
-      km: dbFinanse.kilometry ?? '0',
+      numerKasy: source.numer_kasy_fiskalnej ?? '#1',
       uwagi: source.uwagi ?? '',
-      numerKasy: source.numer_kasy_fiskalnej ?? '#1'
+
+      // Towar - Otwarcie Rano
+      ranoPuste: dbTowar.rano_butelki_puste ?? '0',
+      ranoProtocudak: dbTowar.rano_butelki_protocudak ?? '0',
+      ranoPelne: dbTowar.rano_butelki_pelne ?? '0',
+      ranoSloiki: dbTowar.rano_sloiki_pelne ?? '0',
+
+      // Towar - Sprzedaż i Inne
+      dostawa: dbTowar.dostawa ?? '0',
+      probki: dbTowar.ilosc_probki ?? '0',
+      stluczki: dbTowar.ilosc_prezenty_stluczki ?? '0',
+      butelkiSprzedane: dbTowar.butelki_sprzedane ?? '0',
+      sloikiSprzedane: dbTowar.sloiki_sprzedane ?? '0',
+
+      // Towar - Zamknięcie Wieczór
+      wieczorPuste: dbTowar.wieczor_butelki_puste ?? '0',
+      wieczorProtocudak: dbTowar.wieczor_butelki_protocudak ?? '0',
+      wieczorPelne: dbTowar.wieczor_butelki_pelne ?? '0',
+      wieczorSloiki: dbTowar.wieczor_sloiki_pelne ?? '0'
     };
   };
 
@@ -109,12 +133,12 @@ export default function TabHandel(props: any) {
 
   return (
     <div className="max-w-md mx-auto mb-8">
-      
+
       {/* WIDOK 1: DASHBOARD */}
       {!widokFormularza && !successMsg && (
         <div className="bg-white rounded-2xl shadow-lg border p-6 border-slate-200 relative overflow-hidden animate-fadeIn">
           <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-amber-400 to-orange-500"></div>
-          
+
           <h2 className="text-sm font-black text-slate-400 uppercase tracking-wider mb-4 text-center">Twój dzień handlowy</h2>
 
           {loadingDzis ? (
@@ -124,7 +148,7 @@ export default function TabHandel(props: any) {
             </div>
           ) : (
             <div className="text-center space-y-4">
-              
+
               {czyFormatkaWygenerowana ? (
                 <>
                   <div className="text-5xl mb-2">✅</div>
@@ -141,7 +165,7 @@ export default function TabHandel(props: any) {
                   <div className="text-5xl mb-2">🌙</div>
                   <h3 className="text-xl font-black text-indigo-600">Jesteś w trakcie pracy</h3>
                   <p className="text-sm text-slate-500 font-medium">Twoje stanowisko: <strong className="text-slate-700">{nazwaStoiska}</strong></p>
-                  
+
                   <div className="pt-4 border-t border-slate-100">
                     <button onClick={() => setWidokFormularza(true)} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black uppercase tracking-wider py-4 rounded-xl shadow-lg transition transform hover:-translate-y-0.5 cursor-pointer">
                       Przejdź do raportu wieczornego
@@ -155,7 +179,7 @@ export default function TabHandel(props: any) {
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Jesteś przypisany na stoisko:</p>
                     <h3 className="text-2xl font-black text-slate-800 mt-1 leading-tight">{dzisiejszyHandel.punkty_handlu?.nazwa}</h3>
                   </div>
-                  
+
                   <div className="pt-4 border-t border-slate-100">
                     <button onClick={() => setWidokFormularza(true)} className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black uppercase tracking-wider py-4 rounded-xl shadow-lg transition transform hover:-translate-y-0.5 cursor-pointer">
                       🚀 Otwórz stoisko
@@ -178,13 +202,24 @@ export default function TabHandel(props: any) {
 
       {/* WIDOK 2: FORMULARZ LUB PODGLĄD */}
       {(widokFormularza || successMsg) && (
-        <div className="bg-white rounded-2xl shadow-lg border overflow-hidden border-slate-200 animate-slideUp">
-          
+        <div className="bg-white rounded-2xl shadow-lg border overflow-hidden border-slate-200 animate-slideUp relative">
+
+          {/* NAKŁADKA ŁADOWANIA (POJAWIA SIĘ TYLKO PODCZAS WYSYŁANIA) */}
+          {sending && (
+            <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm animate-fadeIn">
+              <div className="w-14 h-14 border-4 border-slate-200 border-t-amber-500 rounded-full animate-spin mb-4 shadow-sm"></div>
+              <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest animate-pulse">Przetwarzanie</h3>
+              <p className="text-[10px] font-bold text-slate-500 mt-2 text-center px-4">
+                Wysyłanie formularza i zdjęć do bazy.<br/>Może to potrwać kilka sekund...
+              </p>
+            </div>
+          )}
+
           {successMsg ? (
             <div className="p-6 text-center space-y-4 animate-fadeIn bg-white">
               <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto text-2xl">🎉</div>
               <p className="text-sm font-bold text-slate-800 px-2">{successMsg}</p>
-              
+
               {successMsg.includes('wieczór') || successMsg.includes('rozliczone') ? (
                 <div className="bg-green-50 border border-green-100 p-3 rounded-xl text-green-700 text-xs font-bold mt-2">
                   ✔️ Zamknięto pomyślnie handel.
@@ -197,7 +232,7 @@ export default function TabHandel(props: any) {
             </div>
           ) : (
             <>
-              {/* Nagłówek */}
+              {/* Nagłówek powrotny */}
               <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center sticky top-0 z-10 shadow-sm">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">📍</span>
@@ -211,81 +246,83 @@ export default function TabHandel(props: any) {
                 </button>
               </div>
 
-              {/* Widok zamkniętego raportu */}
+              {/* Widok zamkniętego raportu (PEŁNE DANE ORAZ SEKCJE) */}
               {czyFormatkaWygenerowana ? (
                 <div className="p-4 space-y-4 max-h-[75vh] overflow-y-auto bg-slate-50">
-                  
+
                   <div className="p-3 bg-slate-200/50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold flex flex-col gap-1.5 shadow-sm">
                     <div className="flex items-center gap-1.5 text-slate-500">
                       <span className="text-sm">🔒</span>
                       <span className="uppercase tracking-wider">Dzień Rozliczony</span>
                     </div>
-                    <span className="font-medium text-slate-600">Raport został pomyślnie zapisany. Poniżej znajduje się podgląd wprowadzonych danych z dzisiejszego dnia.</span>
+                    <span className="font-medium text-slate-600">Raport został pomyślnie zapisany. Poniżej znajduje się pełny podgląd danych z tego dnia.</span>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     
-                    {/* Sekcja 1: Finanse */}
+                    {/* 1. SEKCJA PORANNA */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-wider mb-2 border-b pb-1">☀️ Otwarcie (Poranek)</h4>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between"><span className="text-slate-500">Puste weszły:</span> <strong className="font-mono">{displayData.ranoPuste}</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Protocudaki weszły:</span> <strong className="font-mono">{displayData.ranoProtocudak}</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Pełne weszły:</span> <strong className="font-mono">{displayData.ranoPelne}</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Słoiki weszły:</span> <strong className="font-mono">{displayData.ranoSloiki}</strong></div>
+                      </div>
+                    </div>
+
+                    {/* 2. RUCH TOWAROWY I SPRZEDAŻ */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-wider mb-2 border-b pb-1">📦 Ruch Towarowy i Sprzedaż</h4>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between"><span className="text-slate-500">Sprzedane butelki:</span> <strong className="font-mono text-emerald-600">{displayData.butelkiSprzedane}</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Sprzedane słoiki:</span> <strong className="font-mono text-emerald-600">{displayData.sloikiSprzedane}</strong></div>
+                        <div className="flex justify-between pt-1 mt-1 border-t border-slate-50"><span className="text-slate-500">Dostawa:</span> <strong className="font-mono text-indigo-600">+{displayData.dostawa}</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Próbki / Stłuczki:</span> <strong className="font-mono text-rose-500">{displayData.probki} / {displayData.stluczki}</strong></div>
+                      </div>
+                    </div>
+
+                    {/* 3. INWENTARYZACJA WIECZORNA */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2 border-b pb-1">🔒 Stan Wieczorny (Zamknięcie)</h4>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between"><span className="text-slate-500">Pełne na koniec:</span> <strong className="font-mono">{displayData.wieczorPelne}</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Słoiki na koniec:</span> <strong className="font-mono">{displayData.wieczorSloiki}</strong></div>
+                        <div className="flex justify-between pt-1 mt-1 border-t border-slate-50"><span className="text-slate-500">Puste na koniec:</span> <strong className="font-mono">{displayData.wieczorPuste}</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Protocudaki na koniec:</span> <strong className="font-mono">{displayData.wieczorProtocudak}</strong></div>
+                      </div>
+                    </div>
+
+                    {/* 4. FINANSE */}
                     <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                       <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-wider mb-2 border-b pb-1">💰 Finanse i Kasa</h4>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="p-2 bg-slate-50 rounded-lg">
-                          <span className="block text-[9px] text-slate-400 uppercase font-bold">Kasa (Brutto)</span>
-                          <span className="font-black text-slate-800">{displayData.brutto} zł</span>
-                        </div>
-                        <div className="p-2 bg-slate-50 rounded-lg">
-                          <span className="block text-[9px] text-slate-400 uppercase font-bold">Terminal SumUp</span>
-                          <span className="font-black text-slate-800">{displayData.sumup} zł</span>
-                        </div>
-                        <div className="p-2 bg-slate-50 rounded-lg">
-                          <span className="block text-[9px] text-slate-400 uppercase font-bold">Gotówka</span>
-                          <span className="font-black text-slate-800">{displayData.gotowka} zł</span>
-                        </div>
-                        <div className="p-2 bg-slate-50 rounded-lg">
-                          <span className="block text-[9px] text-slate-400 uppercase font-bold">Inne Koszty</span>
-                          <span className="font-black text-rose-600">{displayData.koszty} zł</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Sekcja 2: Ruch towarowy */}
-                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                      <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-wider mb-2 border-b pb-1">📦 Sprzedany Towar</h4>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="p-2 bg-emerald-50 border border-emerald-100 rounded-lg text-center">
-                          <span className="block text-[9px] text-emerald-600 uppercase font-bold">Butelki sztuki</span>
-                          <span className="font-black text-emerald-700 text-base">{displayData.butelki}</span>
-                        </div>
-                        <div className="p-2 bg-emerald-50 border border-emerald-100 rounded-lg text-center">
-                          <span className="block text-[9px] text-emerald-600 uppercase font-bold">Słoiki sztuki</span>
-                          <span className="font-black text-emerald-700 text-base">{displayData.sloiki}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Sekcja 3: Dane ogólne */}
-                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2 border-b pb-1">⏱️ Informacje Dodatkowe</h4>
                       <div className="space-y-1.5 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-slate-500 font-medium">Godziny handlowe:</span>
-                          <span className="font-bold text-slate-800">{displayData.godzHandlowe}h</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500 font-medium">Godziny inne:</span>
-                          <span className="font-bold text-slate-800">{displayData.godzInne}h</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500 font-medium">Trasa (km):</span>
-                          <span className="font-bold text-slate-800">{displayData.km} km</span>
-                        </div>
-                        {displayData.uwagi && (
-                          <div className="mt-2 pt-2 border-t border-dashed">
-                            <span className="block text-[9px] text-slate-400 uppercase font-bold mb-1">Uwagi z raportu:</span>
-                            <span className="text-slate-600 italic">"{displayData.uwagi}"</span>
-                          </div>
-                        )}
+                        <div className="flex justify-between"><span className="text-slate-500">Numer kasy:</span> <strong className="font-mono text-[10px]">{displayData.numerKasy}</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Sztuki na kasie:</span> <strong className="font-mono">{displayData.sztukKasa}</strong></div>
+                        <div className="flex justify-between pt-1 mt-1 border-t border-slate-50"><span className="text-slate-500">Kwota brutto:</span> <strong className="font-mono text-slate-800">{displayData.brutto} zł</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">SumUp:</span> <strong className="font-mono text-emerald-600">{displayData.sumup} zł</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Gotówka:</span> <strong className="font-mono text-emerald-600">{displayData.gotowka} zł</strong></div>
+                        {Number(displayData.waluty) > 0 && <div className="flex justify-between"><span className="text-slate-500">Inne waluty:</span> <strong className="font-mono text-amber-500">{displayData.waluty}</strong></div>}
+                        <div className="flex justify-between pt-1 mt-1 border-t border-slate-50"><span className="text-slate-500">Koszty inne:</span> <strong className="font-mono text-rose-600">{displayData.koszty} zł</strong></div>
+                        <div className="flex justify-between pt-1 mt-1 border-t border-slate-50"><span className="text-slate-500">Opis kosztów:</span> <strong className="font-mono">{displayData.kosztyOpis}</strong></div>
                       </div>
+                    </div>
+
+                    {/* 5. LOGISTYKA I CZAS */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
+                      <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2 border-b pb-1">🚗 Logistyka i Czas</h4>
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex justify-between"><span className="text-slate-500">Godz. (Handlowe / Inne):</span> <strong className="font-mono">{displayData.godzHandlowe}h / {displayData.godzInne}h</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Trasa / Nocleg:</span> <strong className="font-mono">{displayData.trasa} / {displayData.nocleg} PLN</strong></div>
+                        <div className="flex justify-between"><span className="text-slate-500">Przejechane kilometry:</span> <strong className="font-mono">{displayData.km} km</strong></div>
+                      </div>
+                      
+                      {displayData.uwagi && (
+                        <div className="mt-2 pt-2 border-t border-dashed border-slate-200">
+                          <span className="block text-[9px] text-slate-400 uppercase font-bold mb-1">Uwagi z raportu:</span>
+                          <span className="text-slate-600 italic leading-tight block">"{displayData.uwagi}"</span>
+                        </div>
+                      )}
                     </div>
 
                   </div>
@@ -308,13 +345,13 @@ export default function TabHandel(props: any) {
                         ].map(f => (
                           <div key={f.key} className="flex items-center justify-between bg-slate-50 p-2.5 rounded-xl border border-slate-200/70">
                             <span className="text-sm font-semibold text-slate-700">{f.label}</span>
-                            <input 
-                              type="number" 
-                              min="0" 
-                              required 
-                              placeholder="0" 
-                              value={(poranek as any)[f.key]} 
-                              onChange={(e) => setPoranek({ ...poranek, [f.key]: e.target.value })} 
+                            <input
+                              type="number"
+                              min="0"
+                              required
+                              placeholder="0"
+                              value={(poranek as any)[f.key]}
+                              onChange={(e) => setPoranek({ ...poranek, [f.key]: e.target.value })}
                               className="w-16 text-center font-extrabold px-2 py-1.5 border rounded-lg bg-white outline-none text-slate-800 border-slate-300 focus:border-amber-500 transition-colors"
                             />
                           </div>
@@ -330,7 +367,7 @@ export default function TabHandel(props: any) {
                       </div>
 
                       <button type="submit" disabled={sending} className="w-full mt-2 bg-amber-500 text-white font-black py-3 rounded-xl shadow-md hover:bg-amber-600 transition active:scale-95 cursor-pointer text-sm disabled:opacity-50">
-                        ☀️ Otwórz stoisko
+                        {sending ? 'WYSYŁANIE...' : '☀️ Otwórz stoisko'}
                       </button>
                     </form>
                   ) : (
@@ -339,45 +376,45 @@ export default function TabHandel(props: any) {
                       <div className="bg-indigo-600 -mx-5 -mt-5 p-3 text-white text-center mb-1">
                         <h1 className="text-lg font-bold tracking-tight">Raport Wieczorny 🌙</h1>
                       </div>
-                      
+
                       <div className="pt-1">
                         <h3 className="text-[10px] font-black text-indigo-700 uppercase tracking-wider mb-2">⏱️ 1. Czas pracy i fiskalizacja</h3>
                         <div className="grid grid-cols-2 gap-2">
                           <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-200">
                             <span className="text-xs font-medium text-slate-600">Godz. handlowe</span>
-                            <input 
-                              type="number" 
-                              placeholder="0" 
-                              min="0" 
-                              step="0.5" 
-                              required 
-                              value={ogolne.godzinyHandlowe} 
-                              onChange={(e) => setOgolne({ ...ogolne, godzinyHandlowe: e.target.value })} 
-                              className="w-14 text-center border p-1 rounded-lg bg-white font-extrabold text-xs border-slate-300 outline-none focus:border-indigo-500 transition-colors" 
+                            <input
+                              type="number"
+                              placeholder="0"
+                              min="0"
+                              step="0.5"
+                              required
+                              value={ogolne.godzinyHandlowe}
+                              onChange={(e) => setOgolne({ ...ogolne, godzinyHandlowe: e.target.value })}
+                              className="w-14 text-center border p-1 rounded-lg bg-white font-extrabold text-xs border-slate-300 outline-none focus:border-indigo-500 transition-colors"
                             />
                           </div>
                           <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-200">
                             <span className="text-xs font-medium text-slate-600">Godz. inne</span>
-                            <input 
-                              type="number" 
-                              placeholder="0" 
-                              min="0" 
-                              step="0.5" 
-                              required 
-                              value={ogolne.godzinyNiehandlowe} 
-                              onChange={(e) => setOgolne({ ...ogolne, godzinyNiehandlowe: e.target.value })} 
-                              className="w-14 text-center border p-1 rounded-lg bg-white font-extrabold text-xs border-slate-300 outline-none focus:border-indigo-500 transition-colors" 
+                            <input
+                              type="number"
+                              placeholder="0"
+                              min="0"
+                              step="0.5"
+                              required
+                              value={ogolne.godzinyNiehandlowe}
+                              onChange={(e) => setOgolne({ ...ogolne, godzinyNiehandlowe: e.target.value })}
+                              className="w-14 text-center border p-1 rounded-lg bg-white font-extrabold text-xs border-slate-300 outline-none focus:border-indigo-500 transition-colors"
                             />
                           </div>
                           <div className="col-span-2 flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-200">
                             <span className="text-xs font-extrabold text-slate-800">Numer kasy</span>
-                            <input 
-                              type="text" 
-                              placeholder="#1" 
-                              required 
-                              value={ogolne.numerKasy} 
-                              onChange={(e) => setOgolne({ ...ogolne, numerKasy: e.target.value })} 
-                              className="w-28 text-center border p-1 rounded-lg bg-white font-black text-xs border-slate-300 outline-none focus:border-indigo-500 uppercase transition-colors" 
+                            <input
+                              type="text"
+                              placeholder="#1"
+                              required
+                              value={ogolne.numerKasy}
+                              onChange={(e) => setOgolne({ ...ogolne, numerKasy: e.target.value })}
+                              className="w-28 text-center border p-1 rounded-lg bg-white font-black text-xs border-slate-300 outline-none focus:border-indigo-500 uppercase transition-colors"
                             />
                           </div>
                         </div>
@@ -452,7 +489,7 @@ export default function TabHandel(props: any) {
                           <input type="text" required placeholder="Trasa logistyczna" value={finanse.trasa} onChange={(e) => setFinanse({ ...finanse, trasa: e.target.value })} className="w-full p-2 border rounded-xl text-xs bg-white border-slate-300 outline-none font-medium focus:border-indigo-500 transition-colors" />
                           <input type="number" min="0" step="0.1" required placeholder="Kilometry" value={finanse.kilometry} onChange={(e) => setFinanse({ ...finanse, kilometry: e.target.value })} className="w-full p-2 border rounded-xl text-xs bg-white border-slate-300 outline-none font-medium focus:border-indigo-500 transition-colors" />
                         </div>
-                        
+
                         <div className="grid grid-cols-[1fr_2fr] gap-2">
                           <input type="number" min="0" step="0.01" placeholder="Suma kosztów" value={finanse.kosztaInne} onChange={(e) => setFinanse({ ...finanse, kosztaInne: e.target.value })} className="w-full p-2 border rounded-xl text-xs bg-white border-slate-300 outline-none font-bold focus:border-indigo-500 transition-colors" />
                           <input type="text" placeholder="Opis (np. woda - 20 zł)" value={finanse.kosztaInneOpis} onChange={(e) => setFinanse({ ...finanse, kosztaInneOpis: e.target.value })} className="w-full p-2 border rounded-xl text-xs bg-white border-slate-300 outline-none font-medium focus:border-indigo-500 transition-colors" />
@@ -478,7 +515,9 @@ export default function TabHandel(props: any) {
                         </div>
                       </div>
 
-                      <button type="submit" disabled={sending} className="w-full bg-indigo-600 text-white font-black py-3 rounded-xl shadow-md hover:bg-indigo-700 transition active:scale-95 cursor-pointer text-sm disabled:opacity-50">Zamknij Dzień 🌙</button>
+                      <button type="submit" disabled={sending} className="w-full bg-indigo-600 text-white font-black py-3 rounded-xl shadow-md hover:bg-indigo-700 transition active:scale-95 cursor-pointer text-sm disabled:opacity-50">
+                        {sending ? 'WYSYŁANIE...' : 'Zamknij Dzień 🌙'}
+                      </button>
                     </form>
                   )}
                 </>
