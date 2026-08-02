@@ -5,13 +5,19 @@ export default function TabDzisiejszyHandelAdmin() {
   const [daneHandlowe, setDaneHandlowe] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [szukanaFraza, setSzukanaFraza] = useState('');
+  
+  // ZARZĄDZANIE WIDOKIEM
   const [rozwiniecia, setRozwiniecia] = useState<number[]>([]);
+  const [trescUwagi, setTrescUwagi] = useState<string | null>(null);
 
-  // Stany do zarządzania widokiem zdjęć
+  // ZARZĄDZANIE ZDJĘCIAMI
   const [aktywneZdjecieUrl, setAktywneZdjecieUrl] = useState<string | null>(null);
-  const [ladowanieZdjeciaId, setLadowanieZdjeciaId] = useState<number | null>(null);
+  
+  // Przechowuje pobrane URL zdjęć dla danej checklisty (np. { 35: { kasa: 'url', ... } })
+  const [zdjeciaRaportow, setZdjeciaRaportow] = useState<Record<number, any>>({});
+  const [ladowanieZdjec, setLadowanieZdjec] = useState<Record<number, boolean>>({});
 
-  // ŁADOWANIE DANYCH GŁÓWNYCH
+  // 1. ŁADOWANIE DANYCH GŁÓWNYCH
   useEffect(() => {
     async function fetchDane() {
       try {
@@ -27,35 +33,32 @@ export default function TabDzisiejszyHandelAdmin() {
     fetchDane();
   }, []);
 
-  // OBSŁUGA ROZWIJANIA WIERSZY
-  const toggleRozwiniecie = (idGrafiku: number) => {
+  // 2. OBSŁUGA ROZWIJANIA I POBIERANIA ZDJĘĆ W TLE
+  const toggleRozwiniecie = async (idGrafiku: number, idChecklisty?: number) => {
+    const isExpanding = !rozwiniecia.includes(idGrafiku);
+    
+    // Zwijanie/rozwijanie elementu wizualnie
     setRozwiniecia(prev => 
-      prev.includes(idGrafiku) 
-        ? prev.filter(id => id !== idGrafiku) 
-        : [...prev, idGrafiku]
+      isExpanding 
+        ? [...prev, idGrafiku] 
+        : prev.filter(id => id !== idGrafiku)
     );
-  };
 
-  // POBIERANIE ZDJĘCIA Z CHMURY
-  const otworzZdjecie = async (idChecklisty: number, typZdjecia: 'stanowisko' | 'kasa' | 'sumup') => {
-    try {
-      setLadowanieZdjeciaId(idChecklisty);
-      const urls = await adminService.getZdjeciaDlaChecklisty(idChecklisty);
-      const docelowyUrl = urls[typZdjecia];
-
-      if (docelowyUrl) {
-        setAktywneZdjecieUrl(docelowyUrl);
-      } else {
-        alert('❌ Zdjęcie jeszcze nie zostało wgrane do systemu lub jest w trakcie przetwarzania.');
+    // Jeśli rozwijamy i mamy idChecklisty, a zdjęcia nie są jeszcze pobrane
+    if (isExpanding && idChecklisty && !zdjeciaRaportow[idChecklisty]) {
+      setLadowanieZdjec(prev => ({ ...prev, [idChecklisty]: true }));
+      try {
+        const urls = await adminService.getZdjeciaDlaChecklisty(idChecklisty);
+        setZdjeciaRaportow(prev => ({ ...prev, [idChecklisty]: urls }));
+      } catch (error) {
+        console.error("Błąd ładowania zdjęć", error);
+      } finally {
+        setLadowanieZdjec(prev => ({ ...prev, [idChecklisty]: false }));
       }
-    } catch (error) {
-      console.error('Błąd otwierania zdjęcia:', error);
-      alert('Błąd pobierania zdjęcia z serwera.');
-    } finally {
-      setLadowanieZdjeciaId(null);
     }
   };
 
+  // 3. FILTROWANIE DANYCH
   const przefiltrowaneDane = useMemo(() => {
     if (!szukanaFraza) return daneHandlowe;
     const fraza = szukanaFraza.toLowerCase();
@@ -75,7 +78,7 @@ export default function TabDzisiejszyHandelAdmin() {
       {/* NAGŁÓWEK I WYSZUKIWARKA */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 border-b border-slate-100 pb-4">
         <div>
-          <h2 className="text-xl font-black text-slate-800">Dzisiejszy Handel 📍</h2>
+          <h2 className="text-xl font-black text-slate-800">Dzisiejszy Handel 📊</h2>
           <p className="text-xs font-medium text-slate-500 mt-1">Podgląd na żywo działań ze stoisk ({new Date().toLocaleDateString('pl-PL')})</p>
         </div>
         
@@ -108,6 +111,7 @@ export default function TabDzisiejszyHandelAdmin() {
             const raport = item.raport_z_dnia;
             const jestRozwiniety = rozwiniecia.includes(item.id_grafiku);
             
+            // Określanie statusu
             let statusIkonka = "🔴";
             let statusTekst = "Nie zaczęto";
             let statusKolor = "text-rose-600 bg-rose-50 border-rose-200";
@@ -124,18 +128,23 @@ export default function TabDzisiejszyHandelAdmin() {
               }
             }
 
+            // Wydobycie danych ze zwracanej tablicy/obiektu
             const rawTowar = raport?.check_lista_towar;
             const dbTowar = rawTowar ? (Array.isArray(rawTowar) ? rawTowar[0] : rawTowar) : {};
 
             const rawFinanse = raport?.check_lista_finanse;
             const dbFinanse = rawFinanse ? (Array.isArray(rawFinanse) ? rawFinanse[0] : rawFinanse) : {};
 
+            // URL zdjęć pobrane dla tego konkretnego raportu
+            const zdjeciaUrl = raport ? zdjeciaRaportow[raport.id_checklisty] : null;
+            const isLadowanieZdjec = raport ? ladowanieZdjec[raport.id_checklisty] : false;
+
             return (
               <div key={item.id_grafiku} className={`border rounded-xl transition-all duration-200 overflow-hidden ${jestRozwiniety ? 'border-indigo-300 shadow-md ring-1 ring-indigo-50' : 'border-slate-200 hover:border-slate-300 bg-white'}`}>
                 
                 {/* WIDOK ZWINIĘTY (Karta) */}
                 <div 
-                  onClick={() => toggleRozwiniecie(item.id_grafiku)}
+                  onClick={() => toggleRozwiniecie(item.id_grafiku, raport?.id_checklisty)}
                   className="flex flex-col md:flex-row md:items-center justify-between p-4 cursor-pointer hover:bg-slate-50 gap-3"
                 >
                   <div className="flex items-center gap-4 w-full md:w-auto">
@@ -159,82 +168,102 @@ export default function TabDzisiejszyHandelAdmin() {
                   </div>
                 </div>
 
-                {/* WIDOK ROZWINIĘTY (Szczegóły) */}
+                {/* WIDOK ROZWINIĘTY (Szczegóły - Zmieniony na 3 kolumny jak w ProfilPracownika) */}
                 {jestRozwiniety && (
-                  <div className="p-4 bg-slate-50 border-t border-slate-100 animate-slideDown text-sm">
+                  <div className="p-0 border-t border-slate-100 animate-slideDown text-sm bg-slate-50">
                     {!raport ? (
-                      <div className="text-center py-6 text-slate-500 font-medium flex flex-col items-center gap-2">
-                        <span className="text-3xl grayscale opacity-50">😴</span>
+                      <div className="text-center py-8 text-slate-500 font-medium flex flex-col items-center gap-2">
+                        <span className="text-4xl grayscale opacity-50">😴</span>
                         Pracownik nie utworzył jeszcze raportu porannego.<br/>
                         Stoisko jest zamknięte w systemie.
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 cursor-default">
                         
-                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                          <h4 className="text-[10px] font-black text-amber-500 uppercase tracking-wider mb-2 border-b pb-1">☀️ Otwarcie</h4>
-                          <div className="space-y-1 text-xs">
-                            <div className="flex justify-between"><span className="text-slate-500">Puste weszły:</span> <span className="font-bold">{dbTowar.rano_butelki_puste ?? 0}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">Protocudaki weszły:</span> <span className="font-bold">{dbTowar.rano_butelki_protocudak ?? 0}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">Pełne weszły:</span> <span className="font-bold">{dbTowar.rano_butelki_pelne ?? 0}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">Słoiki weszły:</span> <span className="font-bold">{dbTowar.rano_sloiki_pelne ?? 0}</span></div>
+                        {/* KOLUMNA 1: TOWAR */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                          <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">📦 Stany Towarowe</h3>
+                          <div className="space-y-1.5 text-xs">
+                            <div className="flex justify-between"><span className="text-slate-500">Stan poranny (Butelki):</span> <strong className="font-mono">{dbTowar?.rano_butelki_pelne || 0}</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Stan poranny (Słoiki):</span> <strong className="font-mono">{dbTowar?.rano_sloiki_pelne || 0}</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Dostawa:</span> <strong className="font-mono text-indigo-600">+{dbTowar?.dostawa || 0}</strong></div>
+                            <div className="flex justify-between pt-2 mt-2 border-t border-slate-100"><span className="text-slate-500">Stan wieczorny (Butelki):</span> <strong className="font-mono">{dbTowar?.wieczor_butelki_pelne || 0}</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Stan wieczorny (Słoiki):</span> <strong className="font-mono">{dbTowar?.wieczor_sloiki_pelne || 0}</strong></div>
+                            <div className="flex justify-between pt-2"><span className="text-slate-500">Butelki Puste / Protocudak:</span> <strong className="font-mono text-rose-500">{dbTowar?.wieczor_butelki_puste || 0} / {dbTowar?.wieczor_butelki_protocudak || 0}</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Próbki / Prezenty / Stłuczki:</span> <strong className="font-mono text-rose-500">{dbTowar?.ilosc_probki || 0} / {dbTowar?.ilosc_prezenty_stluczki || 0}</strong></div>
+                          </div>
+                        </div>
+                        
+                        {/* KOLUMNA 2: FINANSE */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                          <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">💰 Finanse i Kasa</h3>
+                          <div className="space-y-1.5 text-xs">
+                            <div className="flex justify-between"><span className="text-slate-500">Sztuki wbite na kasę:</span> <strong className="font-mono">{dbFinanse?.ilosc_sztuk_wbita_na_kase || 0}</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Kwota brutto na kasie:</span> <strong className="font-mono">{dbFinanse?.kwota_brutto_wbita_na_kase || 0} PLN</strong></div>
+                            <div className="flex justify-between pt-2 mt-2 border-t border-slate-100"><span className="text-slate-500">Wpływ SumUp (Karta):</span> <strong className="font-mono text-emerald-600">{dbFinanse?.przychod_sumup || 0} PLN</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Wpływ Gotówka:</span> <strong className="font-mono text-emerald-600">{dbFinanse?.przychod_gotowka_pln || 0} PLN</strong></div>
+                            {dbFinanse?.przychod_inne_waluty > 0 && (
+                              <div className="flex justify-between"><span className="text-slate-500">Inne waluty:</span> <strong className="font-mono text-amber-500">{dbFinanse?.przychod_inne_waluty}</strong></div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* KOLUMNA 3: LOGISTYKA I UWAGI */}
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                          <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">🚗 Logistyka i Dodatki</h3>
+                          <div className="space-y-1.5 text-xs">
+                            <div className="flex justify-between"><span className="text-slate-500">Trasa / Nocleg:</span> <strong>{dbFinanse?.trasa || '-'} / {dbFinanse?.nocleg || '-'} PLN</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Przejechane Kilometry:</span> <strong>{dbFinanse?.kilometry || 0} km</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Koszty inne:</span> <strong className="text-rose-500">{dbFinanse?.koszta_inne || 0} PLN</strong></div>
+                            {dbFinanse?.koszta_inne_opis && <p className="text-[10px] text-slate-400 italic mb-2 leading-tight">({dbFinanse.koszta_inne_opis})</p>}
+                            <div className="flex justify-between pt-2 mt-2 border-t border-slate-100"><span className="text-slate-500">Kasa fiskalna:</span> <strong className="font-mono text-[10px]">{raport.numer_kasy_fiskalnej || '-'}</strong></div>
+                            
+                            {raport.uwagi && (
+                              <div className="mt-2 p-2 bg-amber-50 rounded-lg flex items-center justify-between border border-amber-100">
+                                <span className="text-[11px] font-bold text-amber-800">📝 Zgłoszono uwagi</span>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setTrescUwagi(raport.uwagi); }}
+                                  className="bg-amber-200 hover:bg-amber-300 text-amber-900 px-3 py-1 rounded text-[10px] font-black uppercase tracking-wider transition shadow-sm cursor-pointer"
+                                >Przeczytaj</button>
+                              </div>
+                            )}
                           </div>
                         </div>
 
-                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                          <h4 className="text-[10px] font-black text-emerald-500 uppercase tracking-wider mb-2 border-b pb-1">📦 Sprzedaż / Magazyn</h4>
-                          <div className="space-y-1 text-xs">
-                            <div className="flex justify-between"><span className="text-slate-500">Sprzedane butelki:</span> <span className="font-bold text-emerald-600">{dbTowar.butelki_sprzedane ?? 0}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">Sprzedane słoiki:</span> <span className="font-bold text-emerald-600">{dbTowar.sloiki_sprzedane ?? 0}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">Dostawa:</span> <span className="font-bold">{dbTowar.dostawa ?? 0}</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">Próbki / Stłuczki:</span> <span className="font-bold">{dbTowar.ilosc_probki ?? 0} / {dbTowar.ilosc_prezenty_stluczki ?? 0}</span></div>
-                          </div>
-                        </div>
-
-                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
-                          <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-wider mb-2 border-b pb-1">💰 Finanse ({raport.numer_kasy_fiskalnej || 'Brak kasy'})</h4>
-                          <div className="space-y-1 text-xs">
-                            <div className="flex justify-between"><span className="text-slate-500">Brutto:</span> <span className="font-bold text-slate-800">{dbFinanse.kwota_brutto_wbita_na_kase ?? 0} zł</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">SumUp:</span> <span className="font-bold text-slate-800">{dbFinanse.przychod_sumup ?? 0} zł</span></div>
-                            <div className="flex justify-between"><span className="text-slate-500">Gotówka:</span> <span className="font-bold text-slate-800">{dbFinanse.przychod_gotowka_pln ?? 0} zł</span></div>
-                            <div className="flex justify-between"><span className="text-rose-500">Koszty:</span> <span className="font-bold text-rose-600">{dbFinanse.koszta_inne ?? 0} zł</span></div>
-                          </div>
-                        </div>
-
-                        {/* SEKCJA: ZDJĘCIA */}
-                        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-2 relative">
-                          <h4 className="text-[10px] font-black text-sky-500 uppercase tracking-wider mb-1 border-b pb-1">📸 Dokumentacja</h4>
+                        {/* SEKCJA ZE ZDJĘCIAMI (Rozciągnięta na dół ekranu 3 kolumny) */}
+                        <div className="md:col-span-3 bg-white p-4 rounded-xl shadow-sm border border-slate-200 mt-2">
+                          <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">📸 Dowody i Załączniki</h3>
                           
-                          {/* Wskaźnik ładowania dla TEGO konkretnego raportu */}
-                          {ladowanieZdjeciaId === raport.id_checklisty && (
-                            <div className="absolute inset-0 bg-white/80 flex items-center justify-center rounded-xl z-10 backdrop-blur-sm">
-                               <div className="w-5 h-5 border-2 border-sky-200 border-t-sky-500 rounded-full animate-spin"></div>
+                          {isLadowanieZdjec ? (
+                            <div className="flex gap-2 items-center text-xs font-bold text-slate-400 animate-pulse">
+                              <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin"></span> 
+                              Szukanie plików w bazie...
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap gap-3">
+                              <button
+                                disabled={!zdjeciaUrl?.stanowisko}
+                                onClick={(e) => { e.stopPropagation(); setAktywneZdjecieUrl(zdjeciaUrl!.stanowisko); }}
+                                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 ${zdjeciaUrl?.stanowisko ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 cursor-pointer' : 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed opacity-70'}`}
+                              >
+                                🏕️ Stoisko
+                              </button>
+                              <button
+                                disabled={!zdjeciaUrl?.sumup}
+                                onClick={(e) => { e.stopPropagation(); setAktywneZdjecieUrl(zdjeciaUrl!.sumup); }}
+                                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 ${zdjeciaUrl?.sumup ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 cursor-pointer' : 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed opacity-70'}`}
+                              >
+                                💳 SumUp
+                              </button>
+                              <button
+                                disabled={!zdjeciaUrl?.kasa}
+                                onClick={(e) => { e.stopPropagation(); setAktywneZdjecieUrl(zdjeciaUrl!.kasa); }}
+                                className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition shadow-sm flex items-center gap-2 ${zdjeciaUrl?.kasa ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 cursor-pointer' : 'bg-slate-50 text-slate-400 border border-slate-100 cursor-not-allowed opacity-70'}`}
+                              >
+                                🧾 Raport Kasowy
+                              </button>
                             </div>
                           )}
-
-                          <button 
-                            disabled={!raport || ladowanieZdjeciaId !== null} 
-                            onClick={() => otworzZdjecie(raport.id_checklisty, 'stanowisko')}
-                            className="text-[10px] font-bold py-1.5 px-2 rounded bg-sky-50 text-sky-700 disabled:opacity-40 hover:bg-sky-100 transition text-left cursor-pointer"
-                          >
-                            {raport ? '🖼️ Zobacz Otwarcie Stoiska' : '✖️ Brak zdjęcia stoiska'}
-                          </button>
-                          
-                          <button 
-                            disabled={!raport?.data_wygenerowania_formatki || ladowanieZdjeciaId !== null} 
-                            onClick={() => otworzZdjecie(raport.id_checklisty, 'kasa')}
-                            className="text-[10px] font-bold py-1.5 px-2 rounded bg-sky-50 text-sky-700 disabled:opacity-40 hover:bg-sky-100 transition text-left cursor-pointer"
-                          >
-                            {raport?.data_wygenerowania_formatki ? '🧾 Zobacz Raport Kasy' : '✖️ Brak zdjęcia kasy'}
-                          </button>
-                          
-                          <button 
-                            disabled={!raport?.data_wygenerowania_formatki || ladowanieZdjeciaId !== null} 
-                            onClick={() => otworzZdjecie(raport.id_checklisty, 'sumup')}
-                            className="text-[10px] font-bold py-1.5 px-2 rounded bg-sky-50 text-sky-700 disabled:opacity-40 hover:bg-sky-100 transition text-left cursor-pointer"
-                          >
-                            {raport?.data_wygenerowania_formatki ? '💳 Zobacz Terminal SumUp' : '✖️ Brak zdjęcia terminala'}
-                          </button>
                         </div>
 
                       </div>
@@ -247,36 +276,44 @@ export default function TabDzisiejszyHandelAdmin() {
         </div>
       )}
 
-      {/* POPUP / MODAL ZE ZDJĘCIEM - IDEALNE DOPASOWANIE */}
+      {/* POPUP / MODAL Z PŁYWAJĄCYM ZDJĘCIEM (Zgodnie z wymogami - styl z sukienką) */}
       {aktywneZdjecieUrl && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/90 backdrop-blur-md p-4 sm:p-8 animate-fadeIn"
           onClick={() => setAktywneZdjecieUrl(null)} 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm cursor-pointer animate-fadeIn"
         >
-          <div 
-            className="relative max-w-5xl w-full h-full max-h-[90vh] bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col"
-            onClick={(e) => e.stopPropagation()} 
-          >
-            {/* Nagłówek okienka */}
-            <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50 shrink-0">
-              <h3 className="font-black text-slate-700">Podgląd dokumentacji</h3>
-              <button 
-                onClick={() => setAktywneZdjecieUrl(null)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-200 hover:bg-rose-500 hover:text-white transition-colors cursor-pointer text-slate-600 font-bold"
-              >
-                ✕
-              </button>
-            </div>
+          <div className="relative max-w-5xl w-full flex items-center justify-center">
+            {/* Pływający Przycisk zamknięcia poza obrazkiem */}
+            <button 
+              onClick={() => setAktywneZdjecieUrl(null)} 
+              className="absolute -top-12 right-0 md:-right-8 text-white bg-slate-800 hover:bg-slate-700 rounded-full w-10 h-10 flex items-center justify-center font-bold text-xl border border-slate-600 transition shadow-xl z-10 cursor-pointer"
+            >✕</button>
             
-            {/* Kontener na zdjęcie - naprawione dopasowanie */}
-            <div className="flex-1 p-2 sm:p-4 bg-slate-900/5 flex items-center justify-center overflow-hidden">
-              <img 
-                src={aktywneZdjecieUrl} 
-                alt="Dokumentacja fotograficzna" 
-                className="w-full h-full object-contain drop-shadow-md"
-              />
+            {/* Obraz bez białego tła */}
+            <img 
+              src={aktywneZdjecieUrl} 
+              alt="Dowód z Jarmarku" 
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl animate-scaleUp border border-slate-700" 
+              onClick={(e) => e.stopPropagation()} 
+            />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL (POP-UP) Z TREŚCIĄ UWAGI */}
+      {trescUwagi && (
+        <div onClick={() => setTrescUwagi(null)} className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm cursor-pointer animate-fadeIn">
+          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden cursor-default animate-slideUp">
+            <div className="px-5 py-4 border-b border-amber-100 bg-amber-50 flex justify-between items-center">
+              <h3 className="text-sm font-black text-amber-900 uppercase tracking-wider flex items-center gap-2"><span>📝</span> Uwagi z raportu</h3>
+              <button onClick={() => setTrescUwagi(null)} className="w-7 h-7 flex items-center justify-center rounded-full bg-amber-200/50 hover:bg-amber-200 text-amber-800 font-bold transition cursor-pointer">✕</button>
             </div>
-            
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">{trescUwagi}</p>
+            </div>
+            <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+              <button onClick={() => setTrescUwagi(null)} className="bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold px-6 py-2.5 rounded-xl text-xs transition cursor-pointer shadow-sm">Zamknij</button>
+            </div>
           </div>
         </div>
       )}

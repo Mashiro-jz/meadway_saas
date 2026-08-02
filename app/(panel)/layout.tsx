@@ -59,7 +59,7 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <span className="block text-[11px] font-black text-indigo-600 uppercase tracking-wider px-1 mb-2">Panel Administratora</span>
 
                 <Link href="/admin/dzisiejszy-handel" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/dzisiejszy-handel' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
-                  <span className="text-base">📊</span> Dzisiejszy Handel
+                  <span className="text-base">🏪</span> Dzisiejszy Handel
                 </Link>
                 <Link href="/admin/obsada" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/obsada' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
                   <span className="text-base">📌</span> Tworzenie miejsca handlu
