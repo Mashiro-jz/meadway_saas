@@ -134,6 +134,9 @@ export default function TabDzisiejszyHandelAdmin() {
 
             const rawFinanse = raport?.check_lista_finanse;
             const dbFinanse = rawFinanse ? (Array.isArray(rawFinanse) ? rawFinanse[0] : rawFinanse) : {};
+            
+            // Pobranie danych o smakach dociągniętych przez adminService
+            const inwentaryzacja = raport?.check_lista_inwentaryzacja || [];
 
             // URL zdjęć pobrane dla tego konkretnego raportu
             const zdjeciaUrl = raport ? zdjeciaRaportow[raport.id_checklisty] : null;
@@ -180,18 +183,46 @@ export default function TabDzisiejszyHandelAdmin() {
                     ) : (
                       <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6 cursor-default">
                         
-                        {/* KOLUMNA 1: TOWAR */}
+                        {/* KOLUMNA 1: TOWAR I SMAKI (ZMODYFIKOWANA) */}
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
-                          <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">📦 Stany Towarowe</h3>
-                          <div className="space-y-1.5 text-xs">
-                            <div className="flex justify-between"><span className="text-slate-500">Stan poranny (Butelki):</span> <strong className="font-mono">{dbTowar?.rano_butelki_pelne || 0}</strong></div>
-                            <div className="flex justify-between"><span className="text-slate-500">Stan poranny (Słoiki):</span> <strong className="font-mono">{dbTowar?.rano_sloiki_pelne || 0}</strong></div>
+                          <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-3 border-b border-slate-100 pb-2">📦 Stany Towarowe & Smaki</h3>
+                          
+                          <div className="space-y-1.5 text-xs mb-4">
+                            <div className="flex justify-between"><span className="text-slate-500">Stan poranny (Suma Butelek):</span> <strong className="font-mono">{dbTowar?.rano_butelki_pelne || 0}</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Stan poranny (Suma Słoików):</span> <strong className="font-mono">{dbTowar?.rano_sloiki_pelne || 0}</strong></div>
                             <div className="flex justify-between"><span className="text-slate-500">Dostawa:</span> <strong className="font-mono text-indigo-600">+{dbTowar?.dostawa || 0}</strong></div>
-                            <div className="flex justify-between pt-2 mt-2 border-t border-slate-100"><span className="text-slate-500">Stan wieczorny (Butelki):</span> <strong className="font-mono">{dbTowar?.wieczor_butelki_pelne || 0}</strong></div>
-                            <div className="flex justify-between"><span className="text-slate-500">Stan wieczorny (Słoiki):</span> <strong className="font-mono">{dbTowar?.wieczor_sloiki_pelne || 0}</strong></div>
+                            <div className="flex justify-between pt-2 mt-2 border-t border-slate-100"><span className="text-slate-500">Stan wieczorny (Suma Butelek):</span> <strong className="font-mono">{dbTowar?.wieczor_butelki_pelne || 0}</strong></div>
+                            <div className="flex justify-between"><span className="text-slate-500">Stan wieczorny (Suma Słoików):</span> <strong className="font-mono">{dbTowar?.wieczor_sloiki_pelne || 0}</strong></div>
                             <div className="flex justify-between pt-2"><span className="text-slate-500">Butelki Puste / Protocudak:</span> <strong className="font-mono text-rose-500">{dbTowar?.wieczor_butelki_puste || 0} / {dbTowar?.wieczor_butelki_protocudak || 0}</strong></div>
                             <div className="flex justify-between"><span className="text-slate-500">Próbki / Prezenty / Stłuczki:</span> <strong className="font-mono text-rose-500">{dbTowar?.ilosc_probki || 0} / {dbTowar?.ilosc_prezenty_stluczki || 0}</strong></div>
                           </div>
+
+                          {/* Dynamiczne wyświetlanie smaków z inwentaryzacji */}
+                          {inwentaryzacja.length > 0 && (
+                            <div className="mt-4 pt-4 border-t border-slate-100">
+                               <h4 className="text-[10px] font-black text-indigo-500 uppercase tracking-wider mb-2">🍯 Inwentaryzacja Szczegółowa</h4>
+                               <div className="space-y-2 text-[11px]">
+                                  {/* Nagłówki tabelki smaków */}
+                                  <div className="flex justify-between font-bold text-slate-400 uppercase tracking-wider border-b border-slate-50 pb-1 mb-1">
+                                    <span className="w-1/2">Smak</span>
+                                    <span className="w-1/4 text-center">Rano</span>
+                                    <span className="w-1/4 text-right">Wieczór</span>
+                                  </div>
+                                  
+                                  {/* Mapowanie produktów/smaków */}
+                                  {inwentaryzacja.map((item: any) => (
+                                    <div key={item.id} className="flex justify-between border-b border-slate-50 pb-1 items-center">
+                                      <span className="w-1/2 text-slate-700 truncate font-semibold pr-2" title={item.produkty?.nazwa || 'Nieznany produkt'}>
+                                        {item.produkty?.nazwa || 'Nieznany produkt'}
+                                      </span>
+                                      <strong className="w-1/4 text-center font-mono text-slate-800 bg-slate-50 rounded py-0.5">{item.ilosc_rano || 0}</strong>
+                                      <strong className="w-1/4 text-right font-mono text-indigo-700 bg-indigo-50 rounded py-0.5">{item.ilosc_wieczor || 0}</strong>
+                                    </div>
+                                  ))}
+                               </div>
+                            </div>
+                          )}
+
                         </div>
                         
                         {/* KOLUMNA 2: FINANSE */}
@@ -276,7 +307,7 @@ export default function TabDzisiejszyHandelAdmin() {
         </div>
       )}
 
-      {/* POPUP / MODAL Z PŁYWAJĄCYM ZDJĘCIEM (Zgodnie z wymogami - styl z sukienką) */}
+      {/* POPUP / MODAL Z PŁYWAJĄCYM ZDJĘCIEM */}
       {aktywneZdjecieUrl && (
         <div 
           onClick={() => setAktywneZdjecieUrl(null)} 

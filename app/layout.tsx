@@ -39,6 +39,7 @@ export default function RootLayout({
           text-slate-900 
           flex 
           flex-col
+          suppressHydrationWarning
         `}
       >
         {/* Kontener główny izolujący aplikację, ułatwiający utrzymanie równego układu na telefonach */}

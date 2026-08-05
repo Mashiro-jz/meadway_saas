@@ -8,7 +8,6 @@ import {
   WieczorState,
   OgolneState,
   FinanseState,
-  StatusyState,
 } from "../types/checklista";
 
 function getWeekNumber(dateStr: string): number {
@@ -39,6 +38,9 @@ export function useChecklista(router: any) {
   const [successMsg, setSuccessMsg] = useState("");
 
   const [stoiska, setStoiska] = useState<any[]>([]);
+  // ZMIANA: Stan przechowujący listę dynamicznych smaków (produktów) z bazy
+  const [produkty, setProdukty] = useState<any[]>([]);
+
   const [selectedStoisko, setSelectedStoisko] = useState("");
   const [activeChecklista, setActiveChecklista] = useState<any>(null);
 
@@ -74,6 +76,7 @@ export function useChecklista(router: any) {
   }>({});
   const [oryginalneWpisyZ_BD, setOryginalneWpisyZ_BD] = useState<any[]>([]);
 
+  // Stany klasyczne
   const [poranek, setPoranek] = useState<PoranekState>({
     butelkiPuste: "",
     butelkiProtocudak: "",
@@ -109,18 +112,46 @@ export function useChecklista(router: any) {
     kosztaInne: "",
     kosztaInneOpis: "",
   });
-  const [statusy, setStatusy] = useState<StatusyState>({
-    zdjcStan: false,
-    zdjcDo: false,
-    pracaPoza: false,
-    otwartoZgodnie: false,
-    zdjecieStan: false,
-    zdjecieDo: false,
-    raportyNaKasie: false,
-    dyskKasa: false,
-    dyskSumUp: false,
-  });
 
+  // ZMIANA: Dynamiczne stany dla inwentaryzacji smaków (Klucz to id_produktu, wartość to ilość w stringu)
+  const [inwentaryzacjaRano, setInwentaryzacjaRano] = useState<Record<number, string>>({});
+  const [inwentaryzacjaWieczor, setInwentaryzacjaWieczor] = useState<Record<number, string>>({});
+
+  // ZMIANA: Odczytywanie danych z bazy do stanów dynamicznych, jeśli checklista już istnieje (np. wieczorem ładujemy to co rano)
+  useEffect(() => {
+    if (activeChecklista?.check_lista_inwentaryzacja) {
+      const ranoSt: Record<number, string> = {};
+      const wieczorSt: Record<number, string> = {};
+      activeChecklista.check_lista_inwentaryzacja.forEach((item: any) => {
+        ranoSt[item.id_produktu] = item.ilosc_rano ? String(item.ilosc_rano) : "0";
+        wieczorSt[item.id_produktu] = item.ilosc_wieczor ? String(item.ilosc_wieczor) : "0";
+      });
+      setInwentaryzacjaRano(ranoSt);
+      setInwentaryzacjaWieczor(wieczorSt);
+    } else {
+      setInwentaryzacjaRano({});
+      setInwentaryzacjaWieczor({});
+    }
+  }, [activeChecklista]);
+
+  // ZMIANA: Automatyczne sumowanie butelek i słoików na podstawie dynamicznych wpisów
+  const ranoSumaButelki = produkty
+    .filter((p) => p.typ === "butelka")
+    .reduce((sum, p) => sum + parseInt(inwentaryzacjaRano[p.id_produktu] || "0", 10), 0);
+
+  const ranoSumaSloiki = produkty
+    .filter((p) => p.typ === "słoik" || p.typ === "sloik")
+    .reduce((sum, p) => sum + parseInt(inwentaryzacjaRano[p.id_produktu] || "0", 10), 0);
+
+  const wieczorSumaButelki = produkty
+    .filter((p) => p.typ === "butelka")
+    .reduce((sum, p) => sum + parseInt(inwentaryzacjaWieczor[p.id_produktu] || "0", 10), 0);
+
+  const wieczorSumaSloiki = produkty
+    .filter((p) => p.typ === "słoik" || p.typ === "sloik")
+    .reduce((sum, p) => sum + parseInt(inwentaryzacjaWieczor[p.id_produktu] || "0", 10), 0);
+
+  // Aktualizacja różnic o nowo wyliczane dynamicznie sumy
   const tDataZazwyczaj =
     activeChecklista?.check_lista_towar?.[0] ||
     activeChecklista?.check_lista_towar;
@@ -131,14 +162,15 @@ export function useChecklista(router: any) {
     Number(wieczor.probki || 0) -
     Number(wieczor.stluczki || 0) -
     Number(wieczor.butelkiSprzedane || 0);
-  const roznicaButelki =
-    Number(wieczor.koncowePelne || 0) - oczekiwaneButelkiPelne;
+  
+  // Różnica używa teraz przeliczonej na żywo sumy wieczornych wpisów smaków!
+  const roznicaButelki = wieczorSumaButelki - oczekiwaneButelkiPelne;
 
   const ranoSloiki = Number(tDataZazwyczaj?.rano_sloiki_pelne || 0);
   const oczekiwaneSloikiPelne =
     ranoSloiki - Number(wieczor.sloikiSprzedane || 0);
-  const roznicaSloiki =
-    Number(wieczor.koncoweSloiki || 0) - oczekiwaneSloikiPelne;
+  
+  const roznicaSloiki = wieczorSumaSloiki - oczekiwaneSloikiPelne;
 
   const generujDniMiesiaca = (
     rok: number,
@@ -203,7 +235,6 @@ export function useChecklista(router: any) {
         }
       }
 
-      // Zabezpieczenie: Przy twardym przeładowaniu używamy bezpiecznego ID przekazanego z useEffect
       const targetId = stoiskoId || selectedStoisko;
       if (targetId) {
         setActiveChecklista(
@@ -315,8 +346,6 @@ export function useChecklista(router: any) {
       setUser(user);
 
       try {
-        // ZMIANA: Najpierw pobieramy listę stoisk i ustalamy domyślne,
-        // a dopiero POTEM wywołujemy synchronizację z tym domyślnym ID.
         const stoiskaData = await checklistaService.getStoiska();
         let domyslneStoisko = "";
 
@@ -326,7 +355,10 @@ export function useChecklista(router: any) {
           setSelectedStoisko(domyslneStoisko);
         }
 
-        // Bezpieczne przekazanie ustalonego stoiska rozwiązuje problem blokady po odświeżeniu
+        // ZMIANA: Pobranie przy starcie aplikacji aktywnych smaków (produktów)
+        const pobraneProdukty = await checklistaService.getProdukty();
+        setProdukty(pobraneProdukty);
+
         await syncChecklistState(user, domyslneStoisko);
       } catch (err) {
         console.error(err);
@@ -410,6 +442,10 @@ export function useChecklista(router: any) {
     setFileKasa(null);
     setFileSumUp(null);
 
+    // Czyścimy inwentaryzację przy zmianie stoiska
+    setInwentaryzacjaRano({});
+    setInwentaryzacjaWieczor({});
+
     await syncChecklistState(user, id);
     setLoading(false);
   };
@@ -422,14 +458,27 @@ export function useChecklista(router: any) {
     }
     setSending(true);
     try {
-      const poranneStatusy = { ...statusy, zdjecieStan: true, zdjecieDo: true };
+      // ZMIANA: Podmieniamy ręczne wpisy w poranku na wartości zsumowane z tabelki ze smakami
+      const poranekDoZapisu = {
+        ...poranek,
+        butelkiPelne: String(ranoSumaButelki),
+        sloikiPelne: String(ranoSumaSloiki)
+      };
+
+      // Transformacja obiektu rano na tablicę do insertu
+      const daneDoTabeliRano = produkty.map(p => ({
+        id_produktu: p.id_produktu,
+        ilosc_rano: parseInt(inwentaryzacjaRano[p.id_produktu] || "0", 10)
+      }));
+
       const nowaChecklista = await checklistaService.zapiszPoranek(
         userProfil.id_uzytkownika,
         parseInt(selectedStoisko),
         new Date().toLocaleDateString("sv-SE"),
-        poranek,
-        poranneStatusy,
+        poranekDoZapisu,
+        daneDoTabeliRano
       );
+      
       await checklistaService.uploadFoto(
         nowaChecklista.id_checklisty,
         "stanowisko",
@@ -461,38 +510,57 @@ export function useChecklista(router: any) {
     setSending(true);
     try {
       const idC = activeChecklista.id_checklisty;
+      
+      // ZMIANA: Podmieniamy ręczne wpisy w wieczorze na wartości zsumowane ze smaków
+      const wieczorDoZapisu = {
+        ...wieczor,
+        koncowePelne: String(wieczorSumaButelki),
+        koncoweSloiki: String(wieczorSumaSloiki)
+      };
+
+      // Transformacja obiektu wieczor na tablicę do update
+      const daneDoTabeliWieczor = produkty.map(p => ({
+        id_produktu: p.id_produktu,
+        ilosc_wieczor: parseInt(inwentaryzacjaWieczor[p.id_produktu] || "0", 10)
+      }));
+
       await checklistaService.uploadFoto(idC, "kasa", fileKasa);
       await checklistaService.uploadFoto(idC, "sumup", fileSumUp);
-      await checklistaService.zapiszWieczor(idC, ogolne, wieczor, finanse, {
-        ...statusy,
-        dyskKasa: true,
-        dyskSumUp: true,
-      });
+      
+      // Wysyłamy nową strukturę
+      await checklistaService.zapiszWieczor(
+        idC, 
+        ogolne, 
+        wieczorDoZapisu, 
+        finanse, 
+        daneDoTabeliWieczor
+      );
+      
       setSuccessMsg("Stoisko zamknięte i w pełni rozliczone! 🍯🌙");
       await syncChecklistState(user, selectedStoisko);
 
       setPoranek({
-        butelkiPuste: "",
-        butelkiProtocudak: "",
-        butelkiPelne: "",
-        sloikiPelne: "",
+        butelkiPuste: "0",
+        butelkiProtocudak: "0",
+        butelkiPelne: "0",
+        sloikiPelne: "0",
       });
       setOgolne({
-        godzinyHandlowe: "",
-        godzinyNiehandlowe: "",
+        godzinyHandlowe: "0",
+        godzinyNiehandlowe: "0",
         numerKasy: "",
         uwagi: "",
       });
       setWieczor({
-        dostawa: "",
-        probki: "",
-        stluczki: "",
-        butelkiSprzedane: "",
-        sloikiSprzedane: "",
-        koncowePuste: "",
-        koncoweProtocudak: "",
-        koncowePelne: "",
-        koncoweSloiki: "",
+        dostawa: "0",
+        probki: "0",
+        stluczki: "0",
+        butelkiSprzedane: "0",
+        sloikiSprzedane: "0",
+        koncowePuste: "0",
+        koncoweProtocudak: "0",
+        koncowePelne: "0",
+        koncoweSloiki: "0",
       });
       setFinanse({
         sztukKasa: "",
@@ -509,6 +577,8 @@ export function useChecklista(router: any) {
       setFileStanowisko(null);
       setFileKasa(null);
       setFileSumUp(null);
+      setInwentaryzacjaRano({});
+      setInwentaryzacjaWieczor({});
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -774,8 +844,6 @@ export function useChecklista(router: any) {
     setOgolne,
     finanse,
     setFinanse,
-    statusy,
-    setStatusy,
     handleStoiskoChange,
     handlePoranekSubmit,
     handleWieczorSubmit,
@@ -818,5 +886,16 @@ export function useChecklista(router: any) {
     kliknijDzienWBuforze,
 
     userProfil,
+
+    // ZMIANA: Zwracamy na salę (do interfejsu formularza) nowe stany dla dynamicznych smaków
+    produkty,
+    inwentaryzacjaRano,
+    setInwentaryzacjaRano,
+    inwentaryzacjaWieczor,
+    setInwentaryzacjaWieczor,
+    ranoSumaButelki,
+    ranoSumaSloiki,
+    wieczorSumaButelki,
+    wieczorSumaSloiki
   };
 }

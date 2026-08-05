@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { usePunktyHandlu } from '../../hooks/usePunktyHandlu';
+import { adminService } from '../../services/adminService';
 
 export default function TabPunktyHandlu() {
   const {
@@ -24,6 +25,11 @@ export default function TabPunktyHandlu() {
   const [formCena, setFormCena] = useState('');
   const [formRejon, setFormRejon] = useState('');
   const [formUwagi, setFormUwagi] = useState('');
+
+  // NOWE: Zarządzanie rozwijaniem i ostatnimi raportami
+  const [rozwiniecia, setRozwiniecia] = useState<number[]>([]);
+  const [ostatnieRaporty, setOstatnieRaporty] = useState<Record<number, any>>({});
+  const [loadingRaport, setLoadingRaport] = useState<Record<number, boolean>>({});
 
   // Synchronizacja danych przy otwieraniu modala
   const obsluzOtwarcieModala = (punkt: any = null) => {
@@ -59,6 +65,27 @@ export default function TabPunktyHandlu() {
       id_rejonu: formRejon ? parseInt(formRejon) : null,
       uwagi: formUwagi
     }, edytowanyPunkt?.id_lokalizacji);
+  };
+
+  // NOWE: Funkcja rozwijania i pobierania historii punktu
+  const toggleRozwiniecie = async (idLokalizacji: number) => {
+    const isExpanding = !rozwiniecia.includes(idLokalizacji);
+    setRozwiniecia(prev =>
+      isExpanding ? [...prev, idLokalizacji] : prev.filter(id => id !== idLokalizacji)
+    );
+
+    // Pobieramy dane tylko jeśli rozwijamy i jeszcze ich nie mamy w pamięci podręcznej
+    if (isExpanding && !ostatnieRaporty[idLokalizacji]) {
+      setLoadingRaport(prev => ({ ...prev, [idLokalizacji]: true }));
+      try {
+        const raport = await adminService.getNajnowszaChecklistaDlaPunktu(idLokalizacji);
+        setOstatnieRaporty(prev => ({ ...prev, [idLokalizacji]: raport || 'BRAK' }));
+      } catch (error) {
+        console.error("Błąd pobierania raportu", error);
+      } finally {
+        setLoadingRaport(prev => ({ ...prev, [idLokalizacji]: false }));
+      }
+    }
   };
 
   if (loading) {
@@ -148,39 +175,109 @@ export default function TabPunktyHandlu() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
-              {punkty.map((p: any) => (
-                <tr key={p.id_lokalizacji} className="hover:bg-slate-50/50 transition">
-                  <td className="py-3 px-3">
-                    <p className="font-extrabold text-slate-800">{p.nazwa}</p>
-                    <p className="text-[11px] text-slate-500 font-medium truncate max-w-xs">{p.lokalizacja || 'Brak adresu'}</p>
-                  </td>
-                  <td className="py-3 px-3">
-                    <span className="bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded-md text-[10px] border border-slate-200">
-                      {p.rejony?.nazwa || 'Brak rejonu'}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 text-slate-500 font-medium whitespace-pre-line max-w-xs">
-                    {p.godziny_otwarcia || '-'}
-                  </td>
-                  <td className="py-3 px-3 text-right font-mono font-bold text-slate-800">
-                    {p.cena_stanowiska ? `${p.cena_stanowiska} PLN` : '-'}
-                  </td>
-                  <td className="py-3 px-3 text-center space-x-1.5 flex justify-center">
-                    <button 
-                      onClick={() => obsluzOtwarcieModala(p)} 
-                      className="bg-white text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg font-bold hover:bg-slate-50 transition shadow-sm cursor-pointer text-[10px] uppercase tracking-wider"
-                    >
-                      Edytuj
-                    </button>
-                    <button 
-                      onClick={() => usunPunkt(p.id_lokalizacji)} 
-                      className="bg-white text-rose-600 border border-rose-100 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50 transition shadow-sm cursor-pointer text-[10px] uppercase tracking-wider"
-                    >
-                      Usuń
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {punkty.map((p: any) => {
+                const isExpanded = rozwiniecia.includes(p.id_lokalizacji);
+                const raport = ostatnieRaporty[p.id_lokalizacji];
+                const isLoading = loadingRaport[p.id_lokalizacji];
+
+                return (
+                  <React.Fragment key={p.id_lokalizacji}>
+                    <tr className="hover:bg-slate-50/50 transition">
+                      <td 
+                        onClick={() => toggleRozwiniecie(p.id_lokalizacji)}
+                        className="py-3 px-3 cursor-pointer group"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className={`transform transition-transform text-[10px] ${isExpanded ? 'rotate-180 text-indigo-500' : 'text-slate-400 group-hover:text-indigo-400'}`}>▼</span>
+                          <div>
+                            <p className="font-extrabold text-slate-800">{p.nazwa}</p>
+                            <p className="text-[11px] text-slate-500 font-medium truncate max-w-[200px]">{p.lokalizacja || 'Brak adresu'}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded-md text-[10px] border border-slate-200">
+                          {p.rejony?.nazwa || 'Brak rejonu'}
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 text-slate-500 font-medium whitespace-pre-line max-w-[150px]">
+                        {p.godziny_otwarcia || '-'}
+                      </td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-slate-800">
+                        {p.cena_stanowiska ? `${p.cena_stanowiska} PLN` : '-'}
+                      </td>
+                      <td className="py-3 px-3 text-center space-x-1.5 flex justify-center">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); obsluzOtwarcieModala(p); }} 
+                          className="bg-white text-slate-600 border border-slate-200 px-3 py-1.5 rounded-lg font-bold hover:bg-slate-50 transition shadow-sm cursor-pointer text-[10px] uppercase tracking-wider"
+                        >
+                          Edytuj
+                        </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); usunPunkt(p.id_lokalizacji); }} 
+                          className="bg-white text-rose-600 border border-rose-100 px-3 py-1.5 rounded-lg font-bold hover:bg-rose-50 transition shadow-sm cursor-pointer text-[10px] uppercase tracking-wider"
+                        >
+                          Usuń
+                        </button>
+                      </td>
+                    </tr>
+                    
+                    {/* WIDOK OSTATNIEGO RAPORTU (Rozwinięty) */}
+                    {isExpanded && (
+                      <tr className="bg-slate-50 border-b border-slate-200">
+                        <td colSpan={5} className="p-0">
+                          <div className="p-4 px-6 border-l-4 border-indigo-500 animate-slideDown shadow-inner">
+                            <h4 className="text-[10px] font-black text-indigo-600 uppercase tracking-wider mb-3">Ostatnia inwentaryzacja z tego punktu</h4>
+                            
+                            {isLoading ? (
+                              <div className="flex gap-2 items-center text-xs font-bold text-slate-400 animate-pulse my-4">
+                                <span className="w-4 h-4 border-2 border-slate-300 border-t-indigo-600 rounded-full animate-spin"></span> 
+                                Pobieranie historii...
+                              </div>
+                            ) : raport === 'BRAK' ? (
+                              <div className="text-slate-500 italic text-xs mb-2">Brak jakichkolwiek zaraportowanych dni handlowych na tym stoisku.</div>
+                            ) : raport && (
+                              <div className="space-y-4">
+                                {/* Informacja kto i kiedy */}
+                                <div className="text-xs text-slate-600 flex items-center gap-2">
+                                  <span className="bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded text-[10px]">Data: {new Date(raport.data).toLocaleDateString('pl-PL')}</span>
+                                  <span>Handlował/a: <strong>{raport.uzytkownicy?.imie} {raport.uzytkownicy?.nazwisko}</strong></span>
+                                </div>
+                                
+                                {/* Tabela Smaków */}
+                                {raport.check_lista_inwentaryzacja?.length > 0 ? (
+                                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm max-w-lg">
+                                    <table className="w-full text-left">
+                                      <thead className="bg-slate-100">
+                                        <tr className="text-[9px] font-black text-slate-500 uppercase tracking-wider">
+                                          <th className="px-3 py-2 border-b border-slate-200">Smak Miodu</th>
+                                          <th className="px-3 py-2 border-b border-slate-200 text-center">Stan Poranny</th>
+                                          <th className="px-3 py-2 border-b border-slate-200 text-center">Stan Wieczorny</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100">
+                                        {raport.check_lista_inwentaryzacja.map((inv: any) => (
+                                          <tr key={inv.id} className="hover:bg-slate-50">
+                                            <td className="px-3 py-1.5 font-semibold text-slate-700 truncate max-w-[150px]">{inv.produkty?.nazwa || 'Nieznany'}</td>
+                                            <td className="px-3 py-1.5 text-center font-mono text-slate-800 bg-slate-50/50">{inv.ilosc_rano || 0}</td>
+                                            <td className="px-3 py-1.5 text-center font-mono text-indigo-700 bg-indigo-50/50 font-bold">{inv.ilosc_wieczor || 0}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <div className="text-xs text-slate-500 italic">Brak zapisanych smaków (raport sprzed aktualizacji systemu).</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </tbody>
           </table>
         )}
@@ -188,7 +285,7 @@ export default function TabPunktyHandlu() {
 
       {/* OKNO MODALNE (FORMULARZ DODAWANIA / EDYCJI) */}
       {isModalOpen && (
-        <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs cursor-pointer">
+        <div onClick={() => setIsModalOpen(false)} className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm cursor-pointer">
           <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[90vh] cursor-default animate-slideUp">
             
             <div className="px-5 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">

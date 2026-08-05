@@ -4,7 +4,6 @@ import {
   WieczorState,
   OgolneState,
   FinanseState,
-  StatusyState,
 } from "../types/checklista";
 
 export const checklistaService = {
@@ -38,11 +37,22 @@ export const checklistaService = {
     return data || [];
   },
 
+  // Pobieranie aktywnych produktów (smaków)
+  async getProdukty() {
+    const { data, error } = await supabase
+      .from("produkty")
+      .select("*")
+      .order("id_produktu", { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+  },
+
   async getTodayChecklists(idUzytkownika: number, dzis: string) {
     const { data, error } = await supabase
       .from("check_lista")
       .select(
-        "*, check_lista_towar(*), check_lista_finanse(*), check_lista_status(*)",
+        "*, check_lista_towar(*), check_lista_finanse(*), check_lista_inwentaryzacja(*)",
       )
       .eq("id_uzytkownika", idUzytkownika)
       .eq("data", dzis)
@@ -56,7 +66,7 @@ export const checklistaService = {
     const { data, error } = await supabase
       .from("check_lista")
       .select(
-        "*, punkty_handlu(*), check_lista_towar(*), check_lista_finanse(*), check_lista_status(*)",
+        "*, punkty_handlu(*), check_lista_towar(*), check_lista_finanse(*), check_lista_inwentaryzacja(*)",
       )
       .eq("id_uzytkownika", idUzytkownika)
       .not("data_wygenerowania_formatki", "is", null)
@@ -86,7 +96,7 @@ export const checklistaService = {
     idLokalizacji: number,
     dzis: string,
     poranek: PoranekState,
-    statusy: StatusyState,
+    inwentaryzacjaRano: { id_produktu: number; ilosc_rano: number }[]
   ) {
     const { data: nowaChecklista, error: errC } = await supabase
       .from("check_lista")
@@ -108,7 +118,16 @@ export const checklistaService = {
 
     const idC = nowaChecklista.id_checklisty;
 
-    const [errT, errS, errF] = await Promise.all([
+    // Przygotowanie danych do inwentaryzacji (ustawiamy id_checklisty)
+    const inwentaryzacjaDoBazy = inwentaryzacjaRano.map(item => ({
+      id_checklisty: idC,
+      id_produktu: item.id_produktu,
+      ilosc_rano: item.ilosc_rano,
+      ilosc_wieczor: 0
+    }));
+
+    // Zapisywanie starych tabel oraz nowej tabeli ze smakami
+    const [errT, errF, errI] = await Promise.all([
       supabase.from("check_lista_towar").insert([
         {
           id_checklisty: idC,
@@ -119,19 +138,6 @@ export const checklistaService = {
           ),
           rano_butelki_pelne: parseInt(poranek.butelkiPelne || "0", 10),
           rano_sloiki_pelne: parseInt(poranek.sloikiPelne || "0", 10),
-        },
-      ]),
-      supabase.from("check_lista_status").insert([
-        {
-          id_checklisty: idC,
-          czy_mozliwa_praca_poza_godzinami: statusy.pracaPoza,
-          czy_otwarto_zgodnie_ze_standardami: statusy.otwartoZgodnie,
-          czy_zrobiles_zdjecie_stanowiska:
-            statusy.zdjcStan ?? statusy.zdjecieStan,
-          czy_wrzuciles_zdjecie_do_folderu: statusy.zdjcDo ?? statusy.zdjecieDo,
-          czy_zrobiles_raporty_na_kasie: false,
-          czy_wrzuciles_na_dysk_zdjecie_z_kasy: false,
-          czy_wrzuciles_na_dysk_zdjecie_z_sumup: false,
         },
       ]),
       supabase.from("check_lista_finanse").insert([
@@ -149,11 +155,15 @@ export const checklistaService = {
           koszta_inne_opis: "",
         },
       ]),
+      // Wykonujemy wstawienie tylko wtedy, gdy są jakieś smaki
+      inwentaryzacjaDoBazy.length > 0 
+        ? supabase.from("check_lista_inwentaryzacja").insert(inwentaryzacjaDoBazy)
+        : Promise.resolve({ error: null })
     ]);
 
     if (errT.error) throw errT.error;
-    if (errS.error) throw errS.error;
     if (errF.error) throw errF.error;
+    if (errI.error) throw errI.error;
 
     return nowaChecklista;
   },
@@ -163,9 +173,19 @@ export const checklistaService = {
     ogolne: OgolneState,
     wieczor: WieczorState,
     finanse: FinanseState,
-    statusy: StatusyState,
+    inwentaryzacjaWieczor: { id_produktu: number; ilosc_wieczor: number }[]
   ) {
-    const [errC, errT, errF, errS] = await Promise.all([
+    
+    // Tworzymy promisy do zaktualizowania wieczornych stanów dla każdego ze smaków.
+    const updateInwentaryzacjiPromisy = inwentaryzacjaWieczor.map(item => 
+      supabase
+        .from("check_lista_inwentaryzacja")
+        .update({ ilosc_wieczor: item.ilosc_wieczor })
+        .eq("id_checklisty", idChecklisty)
+        .eq("id_produktu", item.id_produktu)
+    );
+
+    const [errC, errT, errF, ...errInwentaryzacja] = await Promise.all([
       supabase
         .from("check_lista")
         .update({
@@ -209,24 +229,20 @@ export const checklistaService = {
           kilometry: parseFloat(finanse.kilometry || "0"),
           nocleg: parseFloat(finanse.nocleg || "0"),
           koszta_inne: parseFloat(finanse.kosztaInne || "0"),
-          koszta_inne_opis: finanse.kosztaInneOpis || "", // <-- Zapis TO-DO 4 do DB
+          koszta_inne_opis: finanse.kosztaInneOpis || "",
         })
         .eq("id_checklisty", idChecklisty),
-
-      supabase
-        .from("check_lista_status")
-        .update({
-          czy_zrobiles_raporty_na_kasie: statusy.raportyNaKasie,
-          czy_wrzuciles_na_dysk_zdjecie_z_kasy: statusy.dyskKasa,
-          czy_wrzuciles_na_dysk_zdjecie_z_sumup: statusy.dyskSumUp,
-        })
-        .eq("id_checklisty", idChecklisty),
+        
+      ...updateInwentaryzacjiPromisy
     ]);
 
     if (errC.error) throw errC.error;
     if (errT.error) throw errT.error;
     if (errF.error) throw errF.error;
-    if (errS.error) throw errS.error;
+    
+    // Szukamy czy aktualizacja jakiegokolwiek smaku wyrzuciła błąd
+    const bladSmaku = errInwentaryzacja.find(err => err.error);
+    if (bladSmaku) throw bladSmaku.error;
   },
 
   async getGrafikMiesiaca(idUzytkownika: number, rok: number, miesiac: number) {
@@ -298,6 +314,7 @@ export const checklistaService = {
     if (error) throw error;
     return data;
   },
+
   // Pobieranie informacji, czy pracownik ma na dzisiaj zaplanowany wyjazd
   async getDzisiejszyGrafik(idUzytkownika: number) {
     // Generujemy dzisiejszą datę w formacie YYYY-MM-DD
@@ -313,10 +330,11 @@ export const checklistaService = {
     if (error) throw error;
     return data;
   },
+  
   async getSzczegolyChecklisty(idChecklisty: number) {
     const { data, error } = await supabase
       .from("check_lista")
-      .select("*, check_lista_towar(*), check_lista_finanse(*), check_lista_status(*)")
+      .select("*, check_lista_towar(*), check_lista_finanse(*), check_lista_inwentaryzacja(*)")
       .eq("id_checklisty", idChecklisty)
       .single();
 
@@ -324,4 +342,3 @@ export const checklistaService = {
     return data;
   },
 };
-

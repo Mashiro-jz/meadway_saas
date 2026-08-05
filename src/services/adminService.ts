@@ -53,7 +53,6 @@ export const adminService = {
     startData: string,
     koniecData: string,
   ) {
-    // ZMIANA: Dodano "rejony!uzytkownicy_id_rejonu_fkey(nazwa)" aby pobrać nazwę rejonu
     let uzytkownicyQuery = supabase
       .from("uzytkownicy")
       .select(
@@ -88,7 +87,6 @@ export const adminService = {
     wymuszone: boolean = false,
   ) {
     if (idLokalizacji === null) {
-      // Przy usuwaniu przypisania czyścimy też ewentualną flagę "wymuszone"
       const { data: obecny } = await supabase
         .from("grafik")
         .select("dostepnosc")
@@ -120,7 +118,6 @@ export const adminService = {
     let statusDostepnosci = istniejacy ? istniejacy.dostepnosc : "nieznana";
     let czyBoloWymuszone = istniejacy ? istniejacy.wymuszone || false : false;
 
-    // ZMIANA: Jeśli admin wymusza, zmieniamy status pracownika na "dostepny" i zapisujemy flagę
     if (wymuszone) {
       statusDostepnosci = "dostepny";
       czyBoloWymuszone = true;
@@ -153,7 +150,6 @@ export const adminService = {
   // Zapisanie lub edycja punktu handlu
   async savePunktHandlu(punktData: any, idLokalizacji?: number) {
     if (idLokalizacji) {
-      // Edycja - dodajemy select().single(), żeby wymusić błąd przy cichej blokadzie RLS
       const { data, error } = await supabase
         .from("punkty_handlu")
         .update(punktData)
@@ -167,7 +163,6 @@ export const adminService = {
           "Baza odrzuciła zapis (prawdopodobnie brak polisy RLS UPDATE).",
         );
     } else {
-      // Tworzenie nowego
       const { data, error } = await supabase
         .from("punkty_handlu")
         .insert([punktData])
@@ -195,7 +190,6 @@ export const adminService = {
   async getWszyscyPracownicy() {
     const { data, error } = await supabase
       .from("uzytkownicy")
-      // ZMIANA: Dokładnie wskazujemy, którą relacją ma połączyć tabele
       .select("*, rejony!uzytkownicy_id_rejonu_fkey(nazwa)")
       .order("nazwisko", { ascending: true });
 
@@ -206,7 +200,6 @@ export const adminService = {
   // Zapis pracownika (z rzucaniem błędu przy blokadzie RLS)
   async savePracownik(pracownikData: any, idUzytkownika?: number) {
     if (idUzytkownika) {
-      // Edycja
       const { data, error } = await supabase
         .from("uzytkownicy")
         .update(pracownikData)
@@ -218,7 +211,6 @@ export const adminService = {
       if (!data)
         throw new Error("Brak uprawnień do edycji pracownika (RLS blokuje).");
     } else {
-      // Dodawanie nowego
       const { data, error } = await supabase
         .from("uzytkownicy")
         .insert([pracownikData])
@@ -269,7 +261,6 @@ export const adminService = {
   // Zapis rejonu (wymusza odpowiedź przez .single() aby złapać blokady RLS)
   async saveRejon(rejonData: any, idRejonu?: number) {
     if (idRejonu) {
-      // Edycja
       const { data, error } = await supabase
         .from("rejony")
         .update(rejonData)
@@ -281,7 +272,6 @@ export const adminService = {
       if (!data)
         throw new Error("Brak uprawnień do edycji rejonu (RLS blokuje).");
     } else {
-      // Nowy rejon
       const { data, error } = await supabase
         .from("rejony")
         .insert([rejonData])
@@ -301,6 +291,7 @@ export const adminService = {
 
     if (error) throw error;
   },
+
   // ==========================================
   // PROFIL PRACOWNIKA (Szczegóły, Checklisty, Grafik)
   // ==========================================
@@ -337,7 +328,8 @@ export const adminService = {
           rejony (nazwa)
         ),
         check_lista_towar (*),
-        check_lista_finanse (*)
+        check_lista_finanse (*),
+        check_lista_inwentaryzacja (*, produkty (*))
       `,
       )
       .eq("id_uzytkownika", idUzytkownika)
@@ -363,13 +355,12 @@ export const adminService = {
     if (error) throw error;
     return data || [];
   },
+
   // 4. Pobranie linków do zdjęć z konkretnej checklisty
   async getZdjeciaDlaChecklisty(idChecklisty: number) {
-    const { data, error } = await supabase.storage
-      .from("raporty") // <-- Upewnij się, że to nazwa zgodna z Twoim SS (małe litery)
-      .list("", {
-        search: `${idChecklisty}_`, // Szuka plików typu "33_kasa.jpg", "33_sumup.png"
-      });
+    const { data, error } = await supabase.storage.from("raporty").list("", {
+      search: `${idChecklisty}_`,
+    });
 
     if (error) {
       console.error("Błąd pobierania zdjęć z Supabase:", error);
@@ -384,13 +375,11 @@ export const adminService = {
 
     if (data && data.length > 0) {
       for (const plik of data) {
-        // Generujemy z nazwy pliku publiczny link
         const publicUrl = supabase.storage
           .from("raporty")
           .getPublicUrl(plik.name).data.publicUrl;
         const nazwa = plik.name.toLowerCase();
 
-        // Rozdzielamy URL-e do odpowiednich szufladek ignorując wielkość liter i rozszerzenia
         if (nazwa.includes("_kasa")) urls.kasa = publicUrl;
         else if (nazwa.includes("_sumup")) urls.sumup = publicUrl;
         else if (nazwa.includes("_stanowisko")) urls.stanowisko = publicUrl;
@@ -399,11 +388,12 @@ export const adminService = {
 
     return urls;
   },
+
   // POBIERANIE DZISIEJSZEGO HANDLU DLA ADMINISTRATORA
   async getDzisiejszyHandelAdmin() {
-    const dzis = new Date().toLocaleDateString("en-CA"); // Zwróci np. "2026-08-01"
+    const dzis = new Date().toLocaleDateString("en-CA");
 
-    // 1. Pobieramy cały dzisiejszy grafik z twardym WSKAZANIEM klucza obcego dla rejonów!
+    // 1. Pobieramy cały dzisiejszy grafik z twardym WSKAZANIEM klucza obcego dla rejonów
     const { data: grafiki, error: errG } = await supabase
       .from("grafik")
       .select(
@@ -426,7 +416,7 @@ export const adminService = {
       throw errG;
     }
 
-    // 2. Pobieramy wszystkie dzisiejsze checklisty ze wszystkimi szczegółami
+    // 2. Pobieramy wszystkie dzisiejsze checklisty ze wszystkimi szczegółami z uwzględnieniem inwentaryzacji
     const { data: raporty, error: errR } = await supabase
       .from("check_lista")
       .select(
@@ -434,7 +424,7 @@ export const adminService = {
         *,
         check_lista_towar (*),
         check_lista_finanse (*),
-        check_lista_status (*)
+        check_lista_inwentaryzacja (*, produkty (*))
       `,
       )
       .eq("data", dzis);
@@ -459,5 +449,28 @@ export const adminService = {
     });
 
     return zlaczoneDane;
+  },
+  // Pobieranie najnowszego raportu dla danego punktu handlowego
+  async getNajnowszaChecklistaDlaPunktu(idLokalizacji: number) {
+    const { data, error } = await supabase
+      .from("check_lista")
+      .select(
+        `
+        *,
+        check_lista_towar (*),
+        check_lista_finanse (*),
+        check_lista_inwentaryzacja (*, produkty (*)),
+        uzytkownicy (imie, nazwisko)
+      `,
+      )
+      .eq("id_lokalizacji", idLokalizacji)
+      // Sortujemy najpierw po dacie, potem po czasie utworzenia
+      .order("data", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) throw error;
+    return data;
   },
 };
