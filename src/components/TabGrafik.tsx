@@ -12,6 +12,8 @@ export default function TabGrafik(props: any) {
     "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"
   ];
 
+  const dzisiaj = new Date().toLocaleDateString('en-CA');
+
   const getISOWeek = (date: Date) => {
     const d = new Date(date);
     d.setHours(0, 0, 0, 0);
@@ -102,8 +104,22 @@ export default function TabGrafik(props: any) {
               <div className="w-12 shrink-0 text-left font-black text-slate-800 text-sm font-mono pl-2">{tydz.nrTygodnia}</div>
               {tydz.dni.map((d: any, dIdx: number) => {
                 if (d === null) return <div key={`empty-${dIdx}`} className="flex-1 h-10 m-0.5" />;
+                
                 const statusDnia = buforGrafiku[d.data] !== undefined ? buforGrafiku[d.data] : d.dostepnosc;
                 const maPrzypisanyHandel = d.punkty_handlu !== null;
+                const czyToDzisiaj = d.data === dzisiaj;
+
+                // ZOPTYMALIZOWANA LOGIKA KOLORÓW
+                let klasyKoloru = '';
+                if (statusDnia === 'dostepny') {
+                  klasyKoloru = czyToDzisiaj ? 'bg-emerald-700 text-white' : 'bg-emerald-500 text-white';
+                } else if (statusDnia === 'nd') {
+                  klasyKoloru = czyToDzisiaj ? 'bg-rose-700 text-white' : 'bg-rose-500 text-white';
+                } else if (statusDnia === 'nz') {
+                  klasyKoloru = czyToDzisiaj ? 'bg-orange-700 text-white' : 'bg-orange-500 text-white';
+                } else {
+                  klasyKoloru = czyToDzisiaj ? 'bg-slate-400 text-white' : 'bg-slate-200 text-slate-600';
+                }
 
                 return (
                   <div
@@ -117,9 +133,7 @@ export default function TabGrafik(props: any) {
                     }}
                     className={`flex-1 h-10 m-0.5 rounded-lg flex items-center justify-center font-bold text-sm transition relative select-none cursor-pointer active:scale-90 touch-manipulation ${
                       maPrzypisanyHandel ? 'ring-2 ring-offset-1' : ''
-                    } ${
-                      statusDnia === 'dostepny' ? 'bg-emerald-500 text-white' : statusDnia === 'nd' ? 'bg-rose-500 text-white' : statusDnia === 'nz' ? 'bg-orange-500 text-white' : 'bg-slate-200 text-slate-600'
-                    }`}
+                    } ${klasyKoloru} ${czyToDzisiaj ? 'scale-100 z-10 shadow-md' : ''}`}
                   >
                     {d.dzienMiesiaca}
 
@@ -144,9 +158,9 @@ export default function TabGrafik(props: any) {
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-emerald-500 block" /> Dostępny</div>
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-rose-500 block" /> Niedostępny</div>
         <div className="flex items-center gap-2"><span className="w-3 h-3 rounded-full bg-orange-500 block" /> Na żądanie</div>
-        
+
         <div className="col-span-2 flex items-center gap-2 mt-2 pt-3 border-t border-slate-100 w-full justify-center text-rose-600">
-          <span className="w-4 h-4 bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-sm">!</span> 
+          <span className="w-4 h-4 bg-rose-600 text-white rounded-full flex items-center justify-center text-[10px] font-black shadow-sm">!</span>
           Wymuszone przypisanie
         </div>
       </div>
