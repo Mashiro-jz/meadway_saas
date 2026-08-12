@@ -86,7 +86,7 @@ export default function TabHandel(props: any) {
 
     const rawTowar = source.check_lista_towar;
     const dbTowar = Array.isArray(rawTowar) ? (rawTowar[0] || {}) : (rawTowar || {});
-    
+
     const dbInwentaryzacja = source.check_lista_inwentaryzacja || [];
 
     return {
@@ -97,7 +97,7 @@ export default function TabHandel(props: any) {
       waluty: dbFinanse.przychod_inne_waluty ?? '0',
       koszty: dbFinanse.koszta_inne ?? '0',
       kosztyOpis: dbFinanse.koszta_inne_opis ?? '',
-      
+
       km: dbFinanse.kilometry ?? '0',
       trasa: dbFinanse.trasa ?? '-',
       nocleg: dbFinanse.nocleg ?? '0',
@@ -205,7 +205,7 @@ export default function TabHandel(props: any) {
               <div className="w-16 h-16 border-4 border-slate-100 border-t-amber-500 rounded-full animate-spin mb-6 shadow-sm"></div>
               <h3 className="text-base font-black text-slate-800 uppercase tracking-widest animate-pulse">Przetwarzanie</h3>
               <p className="text-xs font-bold text-slate-500 mt-2 text-center px-6 leading-relaxed">
-                Wysyłanie formularza i zdjęć do chmury.<br/>Może to potrwać kilka sekund...
+                Wysyłanie formularza i zdjęć do chmury.<br />Może to potrwać kilka sekund...
               </p>
             </div>
           )}
@@ -305,7 +305,7 @@ export default function TabHandel(props: any) {
                       <div className="bg-amber-500 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6 p-5 sm:p-6 text-white text-center shadow-sm">
                         <h1 className="text-xl sm:text-2xl font-bold tracking-tight drop-shadow-sm">Raport Poranny ☀️</h1>
                       </div>
-                      
+
                       {/* SEKCJA DYNAMICZNYCH SMAKÓW */}
                       <div>
                         <h3 className="text-xs font-black text-amber-700 uppercase tracking-wider mb-3 flex items-center gap-2">🍯 1. Stan towaru (Pełne Miodki)</h3>
@@ -361,11 +361,13 @@ export default function TabHandel(props: any) {
 
                       {/* ZDJĘCIE */}
                       <div className="pt-2 border-t border-slate-100">
-                        <label className={`w-full flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 transition-all duration-200 cursor-pointer text-center ${fileStanowisko ? 'border-emerald-500 bg-emerald-50/50 shadow-inner' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-amber-400'}`}>
+                        <div className={`relative w-full flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 transition-all duration-200 text-center ${fileStanowisko ? 'border-emerald-500 bg-emerald-50/50 shadow-inner' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-amber-400'}`}>
                           <span className="text-3xl mb-2 drop-shadow-sm">{fileStanowisko ? '✅' : '📸'}</span>
                           <span className="text-xs sm:text-sm font-bold text-slate-700">{fileStanowisko ? fileStanowisko.name : 'Zrób zdjęcie stanowiska (Otwarcie)'}</span>
-                          <input type="file" accept="image/*" capture="environment" required onChange={(e) => setFileStanowisko(e.target.files?.[0] || null)} className="hidden" />
-                        </label>
+                          <input type="file" accept="image/*" capture="environment" required onChange={(e) => setFileStanowisko(e.target.files?.[0] || null)}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                          />
+                        </div>
                       </div>
 
                       <button type="submit" disabled={sending} className="w-full mt-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black py-4 rounded-2xl shadow-lg hover:shadow-xl transition-all active:scale-[0.98] cursor-pointer text-sm sm:text-base disabled:opacity-60 disabled:cursor-not-allowed">
@@ -373,7 +375,7 @@ export default function TabHandel(props: any) {
                       </button>
                     </form>
                   ) : (
-                    
+
                     /* ----------------------------------------------------------- */
                     /* FORMULARZ WIECZORNY     */
                     /* ----------------------------------------------------------- */
@@ -423,7 +425,7 @@ export default function TabHandel(props: any) {
                       {/* 3. Inwentaryzacja dynamiczna */}
                       <div className="border-t border-slate-100 pt-5">
                         <h3 className="text-xs font-black text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2">🔒 3. Inwentaryzacja Wieczorna</h3>
-                        
+
                         <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 shadow-inner mb-4">
                           <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-4">Stany Pełne (Pozostałe smaki na koniec)</h4>
                           <div className="grid grid-cols-2 gap-3">
@@ -441,7 +443,7 @@ export default function TabHandel(props: any) {
                               </div>
                             ))}
                           </div>
-                          
+
                           <div className="flex justify-between items-center bg-indigo-50/50 p-3 rounded-2xl border border-indigo-100 mt-4">
                             <div className="text-center w-full border-r border-indigo-200/50">
                               <span className="block text-[9px] font-black text-indigo-500 uppercase mb-1">Suma Butelek</span>
@@ -491,7 +493,7 @@ export default function TabHandel(props: any) {
                       {/* 4. Finanse & Logistyka */}
                       <div className="border-t border-slate-100 pt-5 space-y-4">
                         <h3 className="text-xs font-black text-indigo-700 uppercase tracking-wider mb-3 flex items-center gap-2">💰 4. Finanse & Logistyka</h3>
-                        
+
                         <div className="grid grid-cols-2 gap-3">
                           <div className="flex flex-col bg-slate-50 p-3 rounded-2xl border border-slate-200 focus-within:border-indigo-400 shadow-sm transition-all">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">Sztuk (Z Kasy)</label>
@@ -550,17 +552,21 @@ export default function TabHandel(props: any) {
                       <div className="border-t border-slate-100 pt-5 space-y-3">
                         <h3 className="text-xs font-black text-indigo-700 uppercase tracking-wider mb-2 flex items-center gap-2">📸 5. Wymagane Zdjęcia</h3>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <label className={`w-full flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 transition-all duration-200 cursor-pointer text-center ${fileKasa ? 'border-emerald-500 bg-emerald-50/50 shadow-inner' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-400'}`}>
+                          <div className={`relative w-full flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 transition-all duration-200 text-center ${fileKasa ? 'border-emerald-500 bg-emerald-50/50 shadow-inner' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-400'}`}>
                             <span className="text-3xl mb-2 drop-shadow-sm">{fileKasa ? '✅' : '🧾'}</span>
                             <span className="text-xs sm:text-sm font-bold text-slate-700">Raport kasy z drukarki</span>
-                            <input type="file" accept="image/*" capture="environment" required onChange={(e) => setFileKasa(e.target.files?.[0] || null)} className="hidden" />
-                          </label>
+                            <input type="file" accept="image/*" capture="environment" required onChange={(e) => setFileKasa(e.target.files?.[0] || null)}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                          </div>
 
-                          <label className={`w-full flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 transition-all duration-200 cursor-pointer text-center ${fileSumUp ? 'border-emerald-500 bg-emerald-50/50 shadow-inner' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-400'}`}>
+                          <div className={`relative w-full flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-6 transition-all duration-200 text-center ${fileSumUp ? 'border-emerald-500 bg-emerald-50/50 shadow-inner' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-400'}`}>
                             <span className="text-3xl mb-2 drop-shadow-sm">{fileSumUp ? '✅' : '💳'}</span>
                             <span className="text-xs sm:text-sm font-bold text-slate-700">Podsumowanie SumUp</span>
-                            <input type="file" accept="image/*" capture="environment" required onChange={(e) => setFileSumUp(e.target.files?.[0] || null)} className="hidden" />
-                          </label>
+                            <input type="file" accept="image/*" capture="environment" required onChange={(e) => setFileSumUp(e.target.files?.[0] || null)}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                            />
+                          </div>
                         </div>
                       </div>
 
