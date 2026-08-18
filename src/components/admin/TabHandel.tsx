@@ -5,7 +5,7 @@ export default function TabAdmin(props: any) {
     widoczneJarmarki, wybranyJarmark, setWybranyJarmark, dataOd, setDataOd, dataDo, setDataDo,
     szukanaFraza, setSzukanaFraza, przypisaniPracownicy, usunPrzypisaniePracownika,
     pewniacy, doObgadania, resztaPracownikow, przypiszPracownika,
-    userProfil, listaRejonow, filtrRejonu, setFiltrRejonu, zajeciPracownicy // NOWY PROP
+    userProfil, listaRejonow, filtrRejonu, setFiltrRejonu, zajeciPracownicy
   } = props;
 
   const [skopiowano, setSkopiowano] = useState(false);
@@ -16,7 +16,6 @@ export default function TabAdmin(props: any) {
     setTimeout(() => setSkopiowano(false), 2000);
   };
 
-  // NOWA FUNKCJA: Wyczyść cały jarmark
   const wyczyscCalyJarmark = () => {
     if (!przypisaniPracownicy || przypisaniPracownicy.length === 0) return;
     const potwierdzenie = window.confirm(`Czy na pewno chcesz usunąć całą aktualną obsadę (${przypisaniPracownicy.length} osób) z tego jarmarku?`);
@@ -41,7 +40,8 @@ export default function TabAdmin(props: any) {
           <select
             value={filtrRejonu}
             onChange={(e) => setFiltrRejonu(e.target.value)}
-            className="text-xs px-2 py-1.5 border rounded-lg font-bold text-indigo-900 outline-none bg-white border-indigo-200 shadow-xs cursor-pointer focus:ring-2 focus:ring-indigo-500"
+            // Dodano text-base sm:text-xs dla ochrony przed zoomem na iOS
+            className="text-base sm:text-xs px-2 py-1.5 border rounded-lg font-bold text-indigo-900 outline-none bg-white border-indigo-200 shadow-xs cursor-pointer focus:ring-2 focus:ring-indigo-500 transition-colors"
           >
             <option value="ALL">Wszystkie Rejony (Global)</option>
             {listaRejonow.map((r: any) => (
@@ -52,26 +52,53 @@ export default function TabAdmin(props: any) {
       )}
 
       {/* KONTROLKI WYSZUKIWANIA */}
-      <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-3">
+      <div className="p-4 bg-slate-50 border-b border-slate-200 space-y-4">
         <div>
           <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider">A. Wybierz wydarzenie:</label>
-          <select value={wybranyJarmark?.id_lokalizacji || ''} onChange={(e) => setWybranyJarmark(widoczneJarmarki.find((j: any) => j.id_lokalizacji === parseInt(e.target.value)))} className="w-full text-xs px-3 py-2 border rounded-xl font-bold text-slate-800 outline-none bg-white border-slate-300 focus:ring-2 focus:ring-indigo-500">
+          <select 
+            value={wybranyJarmark?.id_lokalizacji || ''} 
+            onChange={(e) => setWybranyJarmark(widoczneJarmarki.find((j: any) => j.id_lokalizacji === parseInt(e.target.value)))} 
+            // text-base chroni przed zoomem
+            className="w-full text-base sm:text-xs px-3 py-2 border rounded-xl font-bold text-slate-800 outline-none bg-white border-slate-300 focus:ring-2 focus:ring-indigo-500 transition-colors"
+          >
             {widoczneJarmarki.map((j: any) => (<option key={j.id_lokalizacji} value={j.id_lokalizacji}>{j.nazwa} ({j.lokalizacja})</option>))}
           </select>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider">B. Data handlu od:</label>
-            <input type="date" value={dataOd} onChange={(e) => setDataOd(e.target.value)} className="w-full text-xs px-2 py-1.5 border rounded-lg bg-white font-bold text-slate-800 outline-none border-slate-300 focus:ring-2 focus:ring-indigo-500" />
+        
+        {/* ZMIANA: gap-3 dla lepszej przerwy, min-w-0 żeby zapobiec wychodzeniu poza ekran */}
+        {/* ZMIANA: Usunięto CSS Grid. Używamy 'flex flex-row', który bezlitośnie 
+            ściska elementy na iOS, a 'flex-1' gwarantuje podział równo 50/50. */}
+        <div className="flex flex-row gap-3 w-full">
+          <div className="flex-1 min-w-0">
+            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider truncate">B. Data handlu od:</label>
+            <input 
+              type="date" 
+              value={dataOd} 
+              onChange={(e) => setDataOd(e.target.value)} 
+              /* Dodano: appearance-none (usuwa ukryte marginesy Apple) oraz max-w-full */
+              className="w-full max-w-full appearance-none min-w-0 text-base sm:text-xs px-2 py-2 border rounded-xl bg-white font-bold text-slate-800 outline-none border-slate-300 focus:ring-2 focus:ring-indigo-500 transition-colors box-border" 
+            />
           </div>
-          <div>
-            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider">C. Data handlu do:</label>
-            <input type="date" value={dataDo} onChange={(e) => setDataDo(e.target.value)} className="w-full text-xs px-2 py-1.5 border rounded-lg bg-white font-bold text-slate-800 outline-none border-slate-300 focus:ring-2 focus:ring-indigo-500" />
+          <div className="flex-1 min-w-0">
+            <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider truncate">C. Data handlu do:</label>
+            <input 
+              type="date" 
+              value={dataDo} 
+              onChange={(e) => setDataDo(e.target.value)} 
+              className="w-full max-w-full appearance-none min-w-0 text-base sm:text-xs px-2 py-2 border rounded-xl bg-white font-bold text-slate-800 outline-none border-slate-300 focus:ring-2 focus:ring-indigo-500 transition-colors box-border" 
+            />
           </div>
         </div>
+
         <div>
           <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-wider">D. Wyszukaj sprzedawcę:</label>
-          <input type="text" placeholder="Wpisz imię lub nazwisko pracownika..." value={szukanaFraza} onChange={(e) => setSzukanaFraza(e.target.value)} className="w-full text-xs px-3 py-2 border rounded-xl bg-white text-slate-800 outline-none border-slate-300 focus:ring-2 focus:ring-indigo-500 font-medium" />
+          <input 
+            type="text" 
+            placeholder="Wpisz imię lub nazwisko pracownika..." 
+            value={szukanaFraza} 
+            onChange={(e) => setSzukanaFraza(e.target.value)} 
+            className="w-full text-base sm:text-xs px-3 py-2 border rounded-xl bg-white text-slate-800 outline-none border-slate-300 focus:ring-2 focus:ring-indigo-500 font-medium transition-colors" 
+          />
         </div>
       </div>
 
