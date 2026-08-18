@@ -65,7 +65,7 @@ export default function TabRejony() {
           placeholder="Nazwa rejonu..." 
           value={szukanaFraza} 
           onChange={(e) => setSzukanaFraza(e.target.value)} 
-          className="w-full text-xs px-3 py-2 border rounded-xl bg-white text-slate-800 outline-none border-slate-300 focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition font-medium"
+          className="w-full sm:text-xs px-3 py-2 border rounded-xl bg-white text-slate-800 outline-none border-slate-300 focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition font-medium"
         />
       </div>
 

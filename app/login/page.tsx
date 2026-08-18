@@ -75,7 +75,8 @@ export default function LoginPage() {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium outline-none transition focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                /* ZMIANA TUTAJ: text-base (16px) na mobilkach, sm:text-sm na większych ekranach */
+                className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base sm:text-sm text-slate-800 font-medium outline-none transition focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                 placeholder="aleksander@miody.pl"
               />
             </div>
@@ -96,7 +97,8 @@ export default function LoginPage() {
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-800 font-medium outline-none transition focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                /* ZMIANA TUTAJ: text-base (16px) na mobilkach, sm:text-sm na większych ekranach */
+                className="w-full pl-9 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-base sm:text-sm text-slate-800 font-medium outline-none transition focus:bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
                 placeholder="••••••••"
               />
               {/* Przełącznik oka widoczności hasła */}

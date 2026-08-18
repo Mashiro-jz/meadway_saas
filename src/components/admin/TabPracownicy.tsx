@@ -253,12 +253,32 @@ export default function TabPracownicy() {
 
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-wider">Adres E-mail</label>
-                    <input type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="w-full text-xs px-3 py-2 border rounded-xl font-medium bg-white border-slate-300 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition" />
+                    <input
+                      type="email"
+                      required
+                      maxLength={100}
+                      value={formEmail}
+                      onChange={(e) => setFormEmail(e.target.value)}
+                      className="w-full text-base sm:text-xs px-3 py-2 border rounded-xl font-medium bg-white border-slate-300 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition"
+                    />
                   </div>
 
                   <div>
                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-wider">Numer telefonu</label>
-                    <input type="text" value={formTelefon} onChange={(e) => setFormTelefon(e.target.value)} placeholder="+48..." className="w-full text-xs px-3 py-2 border rounded-xl font-mono font-medium bg-white border-slate-300 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition" />
+                    <input
+                      type="tel"
+                      required
+                      maxLength={15}
+                      value={formTelefon}
+                      onChange={(e) => {
+                        // ZMIANA: RegEx blokuje wszystko, co NIE JEST cyfrą (\d), plusem (+), spacją ( ) lub myślnikiem (-)
+                        const zwalidowanyNumer = e.target.value.replace(/[^\d+ \-]/g, '');
+                        setFormTelefon(zwalidowanyNumer);
+                      }}
+                      placeholder="+48..."
+                      /* ZMIANA: text-base sm:text-xs (naprawa zooma na iOS) */
+                      className="w-full text-base sm:text-xs px-3 py-2 border rounded-xl font-mono font-medium bg-white border-slate-300 outline-none focus:border-slate-500 focus:ring-1 focus:ring-slate-500 transition"
+                    />
                   </div>
                 </div>
 

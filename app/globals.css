@@ -34,3 +34,16 @@ html {
   scroll-behavior: smooth;
   height: 100%;
 }
+
+/* Dodatkowe style dla inputów, textarea i select na mniejszych ekranach */
+@media screen and (max-width: 1024px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+    /* Dodatkowo zapobiega zaokrąglaniu rogów inputów przez Apple */
+    -webkit-appearance: none;
+    border-radius: 0.75rem; /* Zwraca ładne zaokrąglenie z Tailwinda */
+  }
+}
