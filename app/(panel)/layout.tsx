@@ -64,6 +64,9 @@ export default function PanelLayout({ children }: { children: React.ReactNode })
                 <Link href="/admin/obsada" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/obsada' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
                   <span className="text-base">📌</span> Tworzenie miejsca handlu
                 </Link>
+                <Link href="/admin/grafik-punktu" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/grafik-punktu' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
+                  <span className="text-base">📅</span> Grafik punktu
+                </Link>
                 <Link href="/admin/punkty-handlu" onClick={() => setCzySzufladaOtwarta(false)} className={`flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${pathname === '/admin/punkty-handlu' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'}`}>
                   <span className="text-base">🎪</span> Punkty handlu
                 </Link>
