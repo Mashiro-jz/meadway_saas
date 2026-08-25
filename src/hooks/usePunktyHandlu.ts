@@ -3,12 +3,12 @@
 import { useState, useEffect } from "react";
 import { adminService } from "../services/adminService";
 
+// Brak parametru
 export function usePunktyHandlu() {
   const [punkty, setPunkty] = useState<any[]>([]);
   const [rejony, setRejony] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Filtrowanie i sortowanie
   const [szukanaFraza, setSzukanaFraza] = useState("");
   const [filtrRejonu, setFiltrRejonu] = useState("ALL");
   const [sortowanie, setSortowanie] = useState<"nazwa" | "rejon" | "cena">(
@@ -18,9 +18,8 @@ export function usePunktyHandlu() {
     "asc",
   );
 
-  // Stan Modala (Formularza)
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [edytowanyPunkt, setEdytowanyPunkt] = useState<any>(null); // null = nowy, obiekt = edycja
+  const [edytowanyPunkt, setEdytowanyPunkt] = useState<any>(null); 
 
   const pobierzDane = async () => {
     setLoading(true);
@@ -44,13 +43,11 @@ export function usePunktyHandlu() {
 
   const zapiszPunkt = async (formData: any, idPunktu?: number) => {
     try {
-      // Przekazujemy ID punktu z argumentu, żeby uniknąć gubienia go w pamięci RAM
       await adminService.savePunktHandlu(formData, idPunktu);
       setIsModalOpen(false);
       setEdytowanyPunkt(null);
       await pobierzDane();
     } catch (err: any) {
-      // Teraz, jeśli baza odmówi posłuszeństwa, dostaniesz głośny komunikat
       alert(`Błąd zapisu w bazie: ${err.message}`);
     }
   };
@@ -65,7 +62,6 @@ export function usePunktyHandlu() {
     }
   };
 
-  // Logika filtrowania i sortowania
   const przefiltrowaneIPosortowane = punkty
     .filter((p) => {
       const matchNazwa = `${p.nazwa} ${p.lokalizacja}`

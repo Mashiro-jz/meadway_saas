@@ -256,7 +256,7 @@ export default function TabPracownicy() {
 
             <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
-                
+
                 {/* LEWA KOLUMNA */}
                 <div className="space-y-4">
                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-wider border-b pb-1 mb-2">Dane personalne</h3>
@@ -292,7 +292,7 @@ export default function TabPracownicy() {
                     <label className="block text-[10px] font-black text-slate-500 uppercase mb-1 tracking-wider">Przypisany Rejon</label>
                     <select value={formRejon} onChange={(e) => setFormRejon(e.target.value)} className="w-full text-base sm:text-xs px-3 py-2 border rounded-xl font-bold bg-white border-slate-300 outline-none focus:border-slate-500 focus:ring-1 transition cursor-pointer">
                       <option value="">Brak rejonu / Globalny</option>
-                      <option value="null">Wyzeruj rejon</option> 
+                      <option value="null">Wyzeruj rejon</option>
                       {rejony.map((r: any) => (
                         <option key={r.id_rejonu} value={r.id_rejonu}>{r.nazwa}</option>
                       ))}
@@ -305,7 +305,18 @@ export default function TabPracownicy() {
 
               </div>
 
-              {/* PRZYCISKI AKCJI */}
+              {edytowanyPracownik?.updated_at && (
+                <div className="mt-6 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-center gap-1.5 text-[10px] text-slate-400 font-medium">
+                  <span>🕒 Ostatnia modyfikacja:</span>
+                  <span className="font-black text-slate-500">
+                    {new Date(edytowanyPracownik.updated_at).toLocaleString('pl-PL', { dateStyle: 'short', timeStyle: 'short' })}
+                  </span>
+                  <span>przez</span>
+                  <span className="font-black text-slate-500">
+                    {edytowanyPracownik.edytor?.imie || 'Nieznany'} {edytowanyPracownik.edytor?.nazwisko || 'Użytkownik'}
+                  </span>
+                </div>
+              )}
               <div className="pt-4 mt-5 border-t border-slate-100 flex gap-3">
                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 bg-slate-100 text-slate-600 font-bold py-3 sm:py-3.5 rounded-xl hover:bg-slate-200 transition text-xs cursor-pointer">Anuluj</button>
                 <button type="submit" className="flex-1 bg-slate-800 text-white font-black py-3 sm:py-3.5 rounded-xl hover:bg-slate-900 transition text-xs shadow-md cursor-pointer">Zapisz profil</button>

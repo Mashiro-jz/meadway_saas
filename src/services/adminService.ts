@@ -1,6 +1,14 @@
 import { supabase } from "../../lib/supabase";
 
 export const adminService = {
+  // HELPER: Prywatna funkcja serwisu do pobierania ID zalogowanego edytora (do Audytu)
+  async getCurrentAdminId() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return undefined;
+    const { data } = await supabase.from('uzytkownicy').select('id_uzytkownika').eq('email', user.email).single();
+    return data?.id_uzytkownika;
+  },
+
   // Pobieranie listy rejonów (potrzebne Adminowi do filtrowania widoku)
   async getRejony() {
     const { data, error } = await supabase
@@ -141,7 +149,10 @@ export const adminService = {
   async getAllPunktyHandlu() {
     const { data, error } = await supabase
       .from("punkty_handlu")
-      .select("*, rejony!punkty_handlu_id_rejonu_fkey(nazwa)")
+      // ZMIANA: Składnia !updated_by
+      .select(
+        "*, rejony!punkty_handlu_id_rejonu_fkey(nazwa), edytor:uzytkownicy!updated_by(imie, nazwisko)",
+      )
       .order("nazwa", { ascending: true });
     if (error) throw error;
     return data || [];
@@ -149,26 +160,15 @@ export const adminService = {
 
   // Zapisanie lub edycja punktu handlu
   async savePunktHandlu(punktData: any, idLokalizacji?: number) {
+    const idAdmina = await this.getCurrentAdminId(); 
+    const dataWithAudit = { ...punktData, updated_by: idAdmina };
+    
     if (idLokalizacji) {
-      const { data, error } = await supabase
-        .from("punkty_handlu")
-        .update(punktData)
-        .eq("id_lokalizacji", idLokalizacji)
-        .select()
-        .single();
-
-      if (error) throw error;
-      if (!data)
-        throw new Error(
-          "Baza odrzuciła zapis (prawdopodobnie brak polisy RLS UPDATE).",
-        );
+      const { data, error } = await supabase.from("punkty_handlu").update(dataWithAudit).eq("id_lokalizacji", idLokalizacji).select().single();
+      if (error) throw error; 
+      if (!data) throw new Error("Baza odrzuciła zapis (prawdopodobnie brak polisy RLS UPDATE).");
     } else {
-      const { data, error } = await supabase
-        .from("punkty_handlu")
-        .insert([punktData])
-        .select()
-        .single();
-
+      const { error } = await supabase.from("punkty_handlu").insert([dataWithAudit]).select().single();
       if (error) throw error;
     }
   },
@@ -190,33 +190,26 @@ export const adminService = {
   async getWszyscyPracownicy() {
     const { data, error } = await supabase
       .from("uzytkownicy")
-      .select("*, rejony!uzytkownicy_id_rejonu_fkey(nazwa)")
+      // ZMIANA: Składnia !updated_by
+      .select(
+        "*, rejony!uzytkownicy_id_rejonu_fkey(nazwa), edytor:uzytkownicy!updated_by(imie, nazwisko)",
+      )
       .order("nazwisko", { ascending: true });
-
     if (error) throw error;
     return data || [];
   },
 
-  // Zapis pracownika (z rzucaniem błędu przy blokadzie RLS)
+  // Zapis pracownika
   async savePracownik(pracownikData: any, idUzytkownika?: number) {
+    const idAdmina = await this.getCurrentAdminId(); 
+    const dataWithAudit = { ...pracownikData, updated_by: idAdmina };
+    
     if (idUzytkownika) {
-      const { data, error } = await supabase
-        .from("uzytkownicy")
-        .update(pracownikData)
-        .eq("id_uzytkownika", idUzytkownika)
-        .select()
-        .single();
-
-      if (error) throw error;
-      if (!data)
-        throw new Error("Brak uprawnień do edycji pracownika (RLS blokuje).");
+      const { data, error } = await supabase.from("uzytkownicy").update(dataWithAudit).eq("id_uzytkownika", idUzytkownika).select().single();
+      if (error) throw error; 
+      if (!data) throw new Error("Brak uprawnień do edycji pracownika (RLS blokuje).");
     } else {
-      const { data, error } = await supabase
-        .from("uzytkownicy")
-        .insert([pracownikData])
-        .select()
-        .single();
-
+      const { error } = await supabase.from("uzytkownicy").insert([dataWithAudit]).select().single();
       if (error) throw error;
     }
   },
@@ -239,7 +232,8 @@ export const adminService = {
   async getRejonyZKoordynatorami() {
     const { data, error } = await supabase
       .from("rejony")
-      .select("*, uzytkownicy!rejony_id_koordynatora_fkey(imie, nazwisko)")
+      // ZMIANA: Składnia !updated_by
+      .select("*, uzytkownicy!rejony_id_koordynatora_fkey(imie, nazwisko), edytor:uzytkownicy!updated_by(imie, nazwisko)")
       .order("nazwa", { ascending: true });
 
     if (error) throw error;
@@ -258,26 +252,17 @@ export const adminService = {
     return data || [];
   },
 
-  // Zapis rejonu (wymusza odpowiedź przez .single() aby złapać blokady RLS)
+  // Zapis rejonu (Z DODANYM AUDYTEM)
   async saveRejon(rejonData: any, idRejonu?: number) {
+    const idAdmina = await this.getCurrentAdminId(); 
+    const dataWithAudit = { ...rejonData, updated_by: idAdmina };
+    
     if (idRejonu) {
-      const { data, error } = await supabase
-        .from("rejony")
-        .update(rejonData)
-        .eq("id_rejonu", idRejonu)
-        .select()
-        .single();
-
-      if (error) throw error;
-      if (!data)
-        throw new Error("Brak uprawnień do edycji rejonu (RLS blokuje).");
+      const { data, error } = await supabase.from("rejony").update(dataWithAudit).eq("id_rejonu", idRejonu).select().single();
+      if (error) throw error; 
+      if (!data) throw new Error("Brak uprawnień do edycji rejonu (RLS blokuje).");
     } else {
-      const { data, error } = await supabase
-        .from("rejony")
-        .insert([rejonData])
-        .select()
-        .single();
-
+      const { error } = await supabase.from("rejony").insert([dataWithAudit]).select().single();
       if (error) throw error;
     }
   },
@@ -450,6 +435,7 @@ export const adminService = {
 
     return zlaczoneDane;
   },
+
   // Pobieranie najnowszego raportu dla danego punktu handlowego
   async getNajnowszaChecklistaDlaPunktu(idLokalizacji: number) {
     const { data, error } = await supabase
@@ -460,11 +446,10 @@ export const adminService = {
         check_lista_towar (*),
         check_lista_finanse (*),
         check_lista_inwentaryzacja (*, produkty (*)),
-        uzytkownicy (imie, nazwisko)
+        uzytkownicy!id_uzytkownika (imie, nazwisko) 
       `,
-      )
+      ) // ZMIANA: Składnia !id_uzytkownika
       .eq("id_lokalizacji", idLokalizacji)
-      // Sortujemy najpierw po dacie, potem po czasie utworzenia
       .order("data", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(1)
@@ -472,5 +457,5 @@ export const adminService = {
 
     if (error) throw error;
     return data;
-  },
+  }
 };

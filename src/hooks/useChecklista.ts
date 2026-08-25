@@ -527,13 +527,14 @@ export function useChecklista(router: any) {
       await checklistaService.uploadFoto(idC, "kasa", fileKasa);
       await checklistaService.uploadFoto(idC, "sumup", fileSumUp);
       
-      // Wysyłamy nową strukturę
+      // ZMIANA TUTAJ: Dodano userProfil.id_uzytkownika, żeby wiedzieć, kto zamyka raport (Audyt)
       await checklistaService.zapiszWieczor(
         idC, 
         ogolne, 
         wieczorDoZapisu, 
         finanse, 
-        daneDoTabeliWieczor
+        daneDoTabeliWieczor,
+        userProfil.id_uzytkownika
       );
       
       setSuccessMsg("Stoisko zamknięte i w pełni rozliczone! 🍯🌙");

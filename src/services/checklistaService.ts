@@ -108,6 +108,7 @@ export const checklistaService = {
           ilosc_godzin_handlowych: 0,
           ilosc_godzin_niehandlowych: 0,
           numer_kasy_fiskalnej: "",
+          updated_by: idUzytkownika // <--- ZMIANA: Audyt
         },
       ])
       .select()
@@ -173,7 +174,8 @@ export const checklistaService = {
     ogolne: OgolneState,
     wieczor: WieczorState,
     finanse: FinanseState,
-    inwentaryzacjaWieczor: { id_produktu: number; ilosc_wieczor: number }[]
+    inwentaryzacjaWieczor: { id_produktu: number; ilosc_wieczor: number }[],
+    idUzytkownika: number // <--- ZMIANA: Audyt
   ) {
     
     // Tworzymy promisy do zaktualizowania wieczornych stanów dla każdego ze smaków.
@@ -196,6 +198,7 @@ export const checklistaService = {
           numer_kasy_fiskalnej: ogolne.numerKasy,
           data_wygenerowania_formatki: new Date().toISOString(),
           uwagi: ogolne.uwagi,
+          updated_by: idUzytkownika // <--- ZMIANA: Audyt
         })
         .eq("id_checklisty", idChecklisty),
 

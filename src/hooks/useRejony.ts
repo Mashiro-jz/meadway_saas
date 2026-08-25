@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { adminService } from '../services/adminService';
 
+// Brak parametru
 export function useRejony() {
   const [rejonyBD, setRejonyBD] = useState<any[]>([]);
   const [koordynatorzy, setKoordynatorzy] = useState<any[]>([]);
