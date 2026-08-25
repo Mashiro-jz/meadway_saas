@@ -9,7 +9,7 @@ export const adminService = {
     return data?.id_uzytkownika;
   },
 
-  // Pobieranie listy rejonów (potrzebne Adminowi do filtrowania widoku)
+  // Pobieranie listy rejonów
   async getRejony() {
     const { data, error } = await supabase
       .from("rejony")
@@ -19,7 +19,7 @@ export const adminService = {
     return data || [];
   },
 
-  // Pobieranie listy pracowników podległych pod zalogowanego koordynatora (po rejonie + Europa id: 2)
+  // Pobieranie listy pracowników podległych
   async getPodleglychPracownikow(rola: string, idRejonu: number | null) {
     let query = supabase
       .from("uzytkownicy")
@@ -37,7 +37,7 @@ export const adminService = {
     return data || [];
   },
 
-  // Pobieranie nadchodzących jarmarków dla danego rejonu
+  // Pobieranie nadchodzących jarmarków
   async getJarmarkiZarzadzane(rola: string, idRejonu: number | null) {
     let query = supabase
       .from("punkty_handlu")
@@ -54,7 +54,7 @@ export const adminService = {
     return data || [];
   },
 
-  // Pobieranie dostępności pracowników (z dociągnięciem nazwy rejonu)
+  // Pobieranie dostępności pracowników
   async getDostepnoscLudziNaJarmark(
     rola: string,
     idRejonu: number | null,
@@ -63,8 +63,9 @@ export const adminService = {
   ) {
     let uzytkownicyQuery = supabase
       .from("uzytkownicy")
+      // ZMIANA SKŁADNI NA ODPORNĄ (!id_rejonu)
       .select(
-        "id_uzytkownika, imie, nazwisko, rola, numer_telefonu, id_rejonu, rejony!uzytkownicy_id_rejonu_fkey(nazwa)",
+        "id_uzytkownika, imie, nazwisko, rola, numer_telefonu, id_rejonu, rejony!id_rejonu(nazwa)",
       );
 
     if (rola === "koordynator") {
@@ -87,7 +88,7 @@ export const adminService = {
     return { ludzie: ludzie || [], wpisyGrafiku: wpisyGrafiku || [] };
   },
 
-  // Zapisanie przypisania pracownika (z flagą 'wymuszone')
+  // Zapisanie przypisania pracownika
   async przypiszPracownikaDoJarmarku(
     idUzytkownika: number,
     dataStr: string,
@@ -145,20 +146,20 @@ export const adminService = {
     if (error) throw error;
   },
 
-  // Pobranie wszystkich punktów wraz z nazwą rejonu
+  // Pobranie wszystkich punktów
   async getAllPunktyHandlu() {
     const { data, error } = await supabase
       .from("punkty_handlu")
-      // ZMIANA: Składnia !updated_by
+      // ZMIANA SKŁADNI NA ODPORNĄ (!id_rejonu, !updated_by)
       .select(
-        "*, rejony!punkty_handlu_id_rejonu_fkey(nazwa), edytor:uzytkownicy!updated_by(imie, nazwisko)",
+        "*, rejony!id_rejonu(nazwa), edytor:uzytkownicy!updated_by(imie, nazwisko)",
       )
       .order("nazwa", { ascending: true });
     if (error) throw error;
     return data || [];
   },
 
-  // Zapisanie lub edycja punktu handlu
+  // Zapisanie punktu handlu
   async savePunktHandlu(punktData: any, idLokalizacji?: number) {
     const idAdmina = await this.getCurrentAdminId(); 
     const dataWithAudit = { ...punktData, updated_by: idAdmina };
@@ -173,7 +174,6 @@ export const adminService = {
     }
   },
 
-  // Usunięcie punktu handlu
   async deletePunktHandlu(idLokalizacji: number) {
     const { error } = await supabase
       .from("punkty_handlu")
@@ -182,17 +182,13 @@ export const adminService = {
     if (error) throw error;
   },
 
-  // ==========================================
-  // ZARZĄDZANIE PRACOWNIKAMI (CRUD)
-  // ==========================================
-
   // Pobranie wszystkich użytkowników dla panelu Admina
   async getWszyscyPracownicy() {
     const { data, error } = await supabase
       .from("uzytkownicy")
-      // ZMIANA: Składnia !updated_by
+      // ZMIANA SKŁADNI NA ODPORNĄ (!id_rejonu, !updated_by)
       .select(
-        "*, rejony!uzytkownicy_id_rejonu_fkey(nazwa), edytor:uzytkownicy!updated_by(imie, nazwisko)",
+        "*, rejony!id_rejonu(nazwa), edytor:uzytkownicy!updated_by(imie, nazwisko)",
       )
       .order("nazwisko", { ascending: true });
     if (error) throw error;
@@ -214,7 +210,6 @@ export const adminService = {
     }
   },
 
-  // Usuwanie pracownika
   async deletePracownik(idUzytkownika: number) {
     const { error } = await supabase
       .from("uzytkownicy")
@@ -224,23 +219,18 @@ export const adminService = {
     if (error) throw error;
   },
 
-  // ==========================================
-  // ZARZĄDZANIE REJONAMI (CRUD)
-  // ==========================================
-
-  // Pobranie listy rejonów wraz z imieniem i nazwiskiem koordynatora
+  // Pobranie listy rejonów z koordynatorami
   async getRejonyZKoordynatorami() {
     const { data, error } = await supabase
       .from("rejony")
-      // ZMIANA: Składnia !updated_by
-      .select("*, uzytkownicy!rejony_id_koordynatora_fkey(imie, nazwisko), edytor:uzytkownicy!updated_by(imie, nazwisko)")
+      // ZMIANA SKŁADNI NA ODPORNĄ (!id_koordynatora, !updated_by)
+      .select("*, uzytkownicy!id_koordynatora(imie, nazwisko), edytor:uzytkownicy!updated_by(imie, nazwisko)")
       .order("nazwa", { ascending: true });
 
     if (error) throw error;
     return data || [];
   },
 
-  // Pobranie listy użytkowników, którzy mogą zostać przypisani jako szefowie rejonu
   async getDostepniKoordynatorzy() {
     const { data, error } = await supabase
       .from("uzytkownicy")
@@ -252,7 +242,7 @@ export const adminService = {
     return data || [];
   },
 
-  // Zapis rejonu (Z DODANYM AUDYTEM)
+  // Zapis rejonu
   async saveRejon(rejonData: any, idRejonu?: number) {
     const idAdmina = await this.getCurrentAdminId(); 
     const dataWithAudit = { ...rejonData, updated_by: idAdmina };
@@ -267,7 +257,6 @@ export const adminService = {
     }
   },
 
-  // Usuwanie rejonu
   async deleteRejon(idRejonu: number) {
     const { error } = await supabase
       .from("rejony")
@@ -277,20 +266,17 @@ export const adminService = {
     if (error) throw error;
   },
 
-  // ==========================================
-  // PROFIL PRACOWNIKA (Szczegóły, Checklisty, Grafik)
-  // ==========================================
-
-  // 1. Pobranie szczegółów użytkownika wraz z rejonem i koordynatorem
+  // Pobranie szczegółów użytkownika
   async getSzczegolyPracownika(idUzytkownika: number) {
     const { data, error } = await supabase
       .from("uzytkownicy")
+      // ZMIANA SKŁADNI NA ODPORNĄ
       .select(
         `
         *,
-        rejony!uzytkownicy_id_rejonu_fkey(
+        rejony!id_rejonu(
           nazwa,
-          uzytkownicy!rejony_id_koordynatora_fkey(imie, nazwisko)
+          uzytkownicy!id_koordynatora(imie, nazwisko)
         )
       `,
       )
@@ -301,7 +287,7 @@ export const adminService = {
     return data;
   },
 
-  // 2. Pobranie wszystkich checklist wykonanych przez tego pracownika
+  // Pobranie checklist
   async getChecklistyPracownika(idUzytkownika: number) {
     const { data, error } = await supabase
       .from("check_lista")
@@ -324,7 +310,6 @@ export const adminService = {
     return data || [];
   },
 
-  // 3. Pobranie grafiku pracownika (np. od dziś w przód, lub ogólnie)
   async getGrafikPracownika(idUzytkownika: number) {
     const { data, error } = await supabase
       .from("grafik")
@@ -341,14 +326,13 @@ export const adminService = {
     return data || [];
   },
 
-  // 4. Pobranie linków do zdjęć z konkretnej checklisty
   async getZdjeciaDlaChecklisty(idChecklisty: number) {
     const { data, error } = await supabase.storage.from("raporty").list("", {
       search: `${idChecklisty}_`,
     });
 
     if (error) {
-      console.error("Błąd pobierania zdjęć z Supabase:", error);
+      console.error("Błąd pobierania zdjęć:", error);
       return { kasa: null, sumup: null, stanowisko: null };
     }
 
@@ -374,13 +358,12 @@ export const adminService = {
     return urls;
   },
 
-  // POBIERANIE DZISIEJSZEGO HANDLU DLA ADMINISTRATORA
   async getDzisiejszyHandelAdmin() {
     const dzis = new Date().toLocaleDateString("en-CA");
 
-    // 1. Pobieramy cały dzisiejszy grafik z twardym WSKAZANIEM klucza obcego dla rejonów
     const { data: grafiki, error: errG } = await supabase
       .from("grafik")
+      // ZMIANA SKŁADNI NA ODPORNĄ
       .select(
         `
         *,
@@ -388,7 +371,7 @@ export const adminService = {
           imie, 
           nazwisko, 
           id_rejonu, 
-          rejony:rejony!uzytkownicy_id_rejonu_fkey(nazwa)
+          rejony:rejony!id_rejonu(nazwa)
         ),
         punkty_handlu (nazwa, lokalizacja)
       `,
@@ -396,12 +379,8 @@ export const adminService = {
       .eq("data", dzis)
       .not("id_lokalizacji", "is", null);
 
-    if (errG) {
-      console.error("Błąd pobierania grafiku (Supabase):", errG);
-      throw errG;
-    }
+    if (errG) throw errG;
 
-    // 2. Pobieramy wszystkie dzisiejsze checklisty ze wszystkimi szczegółami z uwzględnieniem inwentaryzacji
     const { data: raporty, error: errR } = await supabase
       .from("check_lista")
       .select(
@@ -414,32 +393,24 @@ export const adminService = {
       )
       .eq("data", dzis);
 
-    if (errR) {
-      console.error("Błąd pobierania raportów (Supabase):", errR);
-      throw errR;
-    }
+    if (errR) throw errR;
 
-    // 3. Łączymy dane
     const zlaczoneDane = grafiki.map((g: any) => {
       const raport = raporty?.find(
         (r: any) =>
           r.id_uzytkownika === g.id_uzytkownika &&
           r.id_lokalizacji === g.id_lokalizacji,
       );
-
-      return {
-        ...g,
-        raport_z_dnia: raport || null,
-      };
+      return { ...g, raport_z_dnia: raport || null };
     });
 
     return zlaczoneDane;
   },
 
-  // Pobieranie najnowszego raportu dla danego punktu handlowego
   async getNajnowszaChecklistaDlaPunktu(idLokalizacji: number) {
     const { data, error } = await supabase
       .from("check_lista")
+      // ZMIANA SKŁADNI NA ODPORNĄ (!id_uzytkownika)
       .select(
         `
         *,
@@ -448,7 +419,7 @@ export const adminService = {
         check_lista_inwentaryzacja (*, produkty (*)),
         uzytkownicy!id_uzytkownika (imie, nazwisko) 
       `,
-      ) // ZMIANA: Składnia !id_uzytkownika
+      )
       .eq("id_lokalizacji", idLokalizacji)
       .order("data", { ascending: false })
       .order("created_at", { ascending: false })

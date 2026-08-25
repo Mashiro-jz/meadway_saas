@@ -304,7 +304,6 @@ export default function TabPracownicy() {
                 </div>
 
               </div>
-
               {edytowanyPracownik?.updated_at && (
                 <div className="mt-6 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-center gap-1.5 text-[10px] text-slate-400 font-medium">
                   <span>🕒 Ostatnia modyfikacja:</span>
@@ -313,7 +312,15 @@ export default function TabPracownicy() {
                   </span>
                   <span>przez</span>
                   <span className="font-black text-slate-500">
-                    {edytowanyPracownik.edytor?.imie || 'Nieznany'} {edytowanyPracownik.edytor?.nazwisko || 'Użytkownik'}
+                    {(() => {
+                      const idEdytora = edytowanyPracownik.updated_by;
+                      const edytorZListy = pracownicy.find(p => p.id_uzytkownika === idEdytora);
+
+                      if (edytorZListy) {
+                        return `${edytorZListy.imie || ''} ${edytorZListy.nazwisko || ''}`;
+                      }
+                      return `Użytkownik (ID: ${idEdytora})`;
+                    })()}
                   </span>
                 </div>
               )}
