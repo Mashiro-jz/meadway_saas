@@ -3,9 +3,15 @@ import { supabase } from "../../lib/supabase";
 export const adminService = {
   // HELPER: Prywatna funkcja serwisu do pobierania ID zalogowanego edytora (do Audytu)
   async getCurrentAdminId() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
     if (!user) return undefined;
-    const { data } = await supabase.from('uzytkownicy').select('id_uzytkownika').eq('email', user.email).single();
+    const { data } = await supabase
+      .from("uzytkownicy")
+      .select("id_uzytkownika")
+      .eq("email", user.email)
+      .single();
     return data?.id_uzytkownika;
   },
 
@@ -161,15 +167,27 @@ export const adminService = {
 
   // Zapisanie punktu handlu
   async savePunktHandlu(punktData: any, idLokalizacji?: number) {
-    const idAdmina = await this.getCurrentAdminId(); 
+    const idAdmina = await this.getCurrentAdminId();
     const dataWithAudit = { ...punktData, updated_by: idAdmina };
-    
+
     if (idLokalizacji) {
-      const { data, error } = await supabase.from("punkty_handlu").update(dataWithAudit).eq("id_lokalizacji", idLokalizacji).select().single();
-      if (error) throw error; 
-      if (!data) throw new Error("Baza odrzuciła zapis (prawdopodobnie brak polisy RLS UPDATE).");
+      const { data, error } = await supabase
+        .from("punkty_handlu")
+        .update(dataWithAudit)
+        .eq("id_lokalizacji", idLokalizacji)
+        .select()
+        .single();
+      if (error) throw error;
+      if (!data)
+        throw new Error(
+          "Baza odrzuciła zapis (prawdopodobnie brak polisy RLS UPDATE).",
+        );
     } else {
-      const { error } = await supabase.from("punkty_handlu").insert([dataWithAudit]).select().single();
+      const { error } = await supabase
+        .from("punkty_handlu")
+        .insert([dataWithAudit])
+        .select()
+        .single();
       if (error) throw error;
     }
   },
@@ -197,15 +215,25 @@ export const adminService = {
 
   // Zapis pracownika
   async savePracownik(pracownikData: any, idUzytkownika?: number) {
-    const idAdmina = await this.getCurrentAdminId(); 
+    const idAdmina = await this.getCurrentAdminId();
     const dataWithAudit = { ...pracownikData, updated_by: idAdmina };
-    
+
     if (idUzytkownika) {
-      const { data, error } = await supabase.from("uzytkownicy").update(dataWithAudit).eq("id_uzytkownika", idUzytkownika).select().single();
-      if (error) throw error; 
-      if (!data) throw new Error("Brak uprawnień do edycji pracownika (RLS blokuje).");
+      const { data, error } = await supabase
+        .from("uzytkownicy")
+        .update(dataWithAudit)
+        .eq("id_uzytkownika", idUzytkownika)
+        .select()
+        .single();
+      if (error) throw error;
+      if (!data)
+        throw new Error("Brak uprawnień do edycji pracownika (RLS blokuje).");
     } else {
-      const { error } = await supabase.from("uzytkownicy").insert([dataWithAudit]).select().single();
+      const { error } = await supabase
+        .from("uzytkownicy")
+        .insert([dataWithAudit])
+        .select()
+        .single();
       if (error) throw error;
     }
   },
@@ -224,7 +252,9 @@ export const adminService = {
     const { data, error } = await supabase
       .from("rejony")
       // ZMIANA SKŁADNI NA ODPORNĄ (!id_koordynatora, !updated_by)
-      .select("*, uzytkownicy!id_koordynatora(imie, nazwisko), edytor:uzytkownicy!updated_by(imie, nazwisko)")
+      .select(
+        "*, uzytkownicy!id_koordynatora(imie, nazwisko), edytor:uzytkownicy!updated_by(imie, nazwisko)",
+      )
       .order("nazwa", { ascending: true });
 
     if (error) throw error;
@@ -244,15 +274,25 @@ export const adminService = {
 
   // Zapis rejonu
   async saveRejon(rejonData: any, idRejonu?: number) {
-    const idAdmina = await this.getCurrentAdminId(); 
+    const idAdmina = await this.getCurrentAdminId();
     const dataWithAudit = { ...rejonData, updated_by: idAdmina };
-    
+
     if (idRejonu) {
-      const { data, error } = await supabase.from("rejony").update(dataWithAudit).eq("id_rejonu", idRejonu).select().single();
-      if (error) throw error; 
-      if (!data) throw new Error("Brak uprawnień do edycji rejonu (RLS blokuje).");
+      const { data, error } = await supabase
+        .from("rejony")
+        .update(dataWithAudit)
+        .eq("id_rejonu", idRejonu)
+        .select()
+        .single();
+      if (error) throw error;
+      if (!data)
+        throw new Error("Brak uprawnień do edycji rejonu (RLS blokuje).");
     } else {
-      const { error } = await supabase.from("rejony").insert([dataWithAudit]).select().single();
+      const { error } = await supabase
+        .from("rejony")
+        .insert([dataWithAudit])
+        .select()
+        .single();
       if (error) throw error;
     }
   },
@@ -407,17 +447,17 @@ export const adminService = {
     return zlaczoneDane;
   },
 
+  // Pobieranie najnowszego raportu dla danego punktu handlowego
   async getNajnowszaChecklistaDlaPunktu(idLokalizacji: number) {
     const { data, error } = await supabase
       .from("check_lista")
-      // ZMIANA SKŁADNI NA ODPORNĄ (!id_uzytkownika)
       .select(
         `
         *,
         check_lista_towar (*),
         check_lista_finanse (*),
         check_lista_inwentaryzacja (*, produkty (*)),
-        uzytkownicy!id_uzytkownika (imie, nazwisko) 
+        uzytkownicy!check_lista_id_uzytkownika_fkey (imie, nazwisko) 
       `,
       )
       .eq("id_lokalizacji", idLokalizacji)
@@ -428,5 +468,22 @@ export const adminService = {
 
     if (error) throw error;
     return data;
-  }
+  },
+  async getHistoriaRekordu(nazwaTabeli: string, idRekordu: string | number) {
+    // Obliczamy datę sprzed 7 dni (zwracamy zmiany tylko z ostatniego tygodnia)
+    const tydzienTemu = new Date();
+    tydzienTemu.setDate(tydzienTemu.getDate() - 7);
+    const dataOd = tydzienTemu.toISOString();
+
+    const { data, error } = await supabase
+      .from("historia_zmian")
+      .select("*, edytor:uzytkownicy!kto_zmienil(imie, nazwisko)")
+      .eq("tabela", nazwaTabeli)
+      .eq("id_rekordu", String(idRekordu))
+      .gte("data_zmiany", dataOd)
+      .order("data_zmiany", { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
 };
